@@ -1,13 +1,20 @@
 import streamlit as st
 import pandas as pd
-from data_loader import save_attributes_data, save_tn_attribute_relations
+from data_loader import save_attributes_data, save_tn_attribute_relations, save_excel_data
 
 def display_tn_details(df, attr_df, relation_df, tn):
-    st.header(f"{tn}")
     
+    cola, colb = st.columns([5,1])
+    with cola:
+        st.header(f"{tn}")
+    with colb:
+        if st.button("✏️ Editar"):
+            st.session_state.page = 'tn_edit'
+            st.rerun()
+
     # Mostrar información del término de negocio
     tn_info = df[df["Término de negocio"] == tn].iloc[0]
-    st.text_input("Concepto", value=tn_info['Concepto'], disabled=True)
+    st.text_area("Concepto", value=tn_info['Concepto'], disabled=True)
     # Crear dos columnas
     col1, col2 = st.columns(2)
     
@@ -19,6 +26,7 @@ def display_tn_details(df, attr_df, relation_df, tn):
         st.text_input("Proceso de Valor", value=tn_info['Proceso de Valor'], disabled=True)
         st.text_input("Master Data Steward", value=tn_info['Master Data Steward'], disabled=True)
     
+    
     # Mostrar atributos asociados en tarjetas
     st.markdown("---")
     st.subheader("Atributos Asociados")
@@ -28,8 +36,9 @@ def display_tn_details(df, attr_df, relation_df, tn):
     for i, (_, rel) in enumerate(tn_attributes.iterrows()):
         attr = attr_df[attr_df["Atributo"] == rel["Atributo"]].iloc[0]
         with (col1 if i % 2 == 0 else col2):
-            with st.expander(attr["Atributo"]):
-                st.write(f"**Definición:** {attr['Definición'][:100]}...")
+            with st.expander(f"**{attr["Atributo"]}**"):
+                st.write(f"Definición:  \n" f"**{attr['Definición']}**")
+                st.write(f"Regla de Negocio:  \n" f"**{attr['Regla de Negocio']}**")
                 if st.button(f"Ver detalle de {attr['Atributo']}"):
                     st.session_state.selected_attribute = attr['Atributo']
                     st.session_state.page = 'attribute_detail'
@@ -82,3 +91,66 @@ def add_new_attribute(attr_df, relation_df, tn):
         st.session_state.page = 'tn_detail'
         st.session_state.selected_tn = tn
         st.rerun()
+
+
+def edit_tn_details(df, attr_df, relation_df, tn):
+    st.header(f"Editar: {tn}")
+    
+    # Obtener información del término de negocio
+    tn_info = df[df["Término de negocio"] == tn].iloc[0]
+    
+    # Crear campos editables
+    new_concept = st.text_input("Concepto", value=tn_info['Concepto'])
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        new_capacity = st.text_input("Capacidad", value=tn_info['Capacidad'])
+        new_subject = st.text_input("Sujeto", value=tn_info['Sujeto'])
+    
+    with col2:
+        new_value_process = st.text_input("Proceso de Valor", value=tn_info['Proceso de Valor'])
+        new_data_steward = st.text_input("Master Data Steward", value=tn_info['Master Data Steward'])
+    
+    
+    col3, col4, col5 = st.columns([4,1,1])
+    with col3:
+        st.write(" ")
+
+    with col4:
+        if st.button("❌ Cancelar"):
+            st.session_state.page = 'tn_detail'
+            st.rerun()
+    
+    with col5:
+        if st.button("💾 Guardar"):
+            # Actualizar el DataFrame
+            df.loc[df["Término de negocio"] == tn, "Concepto"] = new_concept
+            df.loc[df["Término de negocio"] == tn, "Capacidad"] = new_capacity
+            df.loc[df["Término de negocio"] == tn, "Sujeto"] = new_subject
+            df.loc[df["Término de negocio"] == tn, "Proceso de Valor"] = new_value_process
+            df.loc[df["Término de negocio"] == tn, "Master Data Steward"] = new_data_steward
+            
+            # Guardar cambios en el archivo Excel
+            if save_excel_data(df, "glosario.xlsx"):
+                st.success("Cambios guardados exitosamente")
+                # Cambiar el estado a 'tn_detail' para mostrar la versión actualizada
+                st.session_state.page = 'tn_detail'
+                st.rerun()
+            else:
+                st.error("Error al guardar los cambios")
+
+
+        
+    
+    # Mostrar atributos asociados (sin edición en esta vista)
+    st.markdown("---")
+    st.subheader("Atributos Asociados")
+    tn_attributes = relation_df[relation_df["Término de Negocio"] == tn]
+    
+    col1, col2 = st.columns(2)
+    for i, (_, rel) in enumerate(tn_attributes.iterrows()):
+        attr = attr_df[attr_df["Atributo"] == rel["Atributo"]].iloc[0]
+        with (col1 if i % 2 == 0 else col2):
+            with st.expander(attr["Atributo"]):
+                st.write(f"**Definición:** {attr['Definición'][:100]}...")
