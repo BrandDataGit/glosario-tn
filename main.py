@@ -1,7 +1,7 @@
 import streamlit as st
 from data_loader import load_excel_data, save_excel_data, load_attributes_data, save_attributes_data, load_tn_attribute_relations, save_tn_attribute_relations
 from ui_components import display_explore_tn_page
-from attributes import display_tn_details, display_attribute_details, add_new_attribute, edit_tn_details
+from attributes import display_tn_details, display_attribute_details, add_new_attribute, edit_tn_details, edit_attribute_details
 
 st.set_page_config(page_title="Glosario de Términos de Negocio", layout="wide")
 
@@ -29,7 +29,7 @@ def main():
 
     if choice == "Explorar Términos":
         if st.session_state.page != 'explore':
-            if st.button("⬅️ Regresar"):
+            if st.button("🚀 Home"):
                 st.session_state.page = 'explore'
                 st.rerun()
 
@@ -43,6 +43,8 @@ def main():
             display_attribute_details(attr_df, st.session_state.selected_attribute, st.session_state.selected_tn)
         elif st.session_state.page == 'add_attribute':
             add_new_attribute(attr_df, relation_df, st.session_state.selected_tn)
+        elif st.session_state.page == 'edit_attribute':
+            edit_attribute_details(attr_df, st.session_state.selected_attribute, st.session_state.selected_tn)
 
         
 

@@ -63,12 +63,28 @@ def display_tn_details(df, attr_df, relation_df, tn):
     
 
 def display_attribute_details(attr_df, attribute, tn):
-    st.header(f"Detalles del Atributo: {attribute}")
-    
+
+    cola, colb = st.columns([5,1])
+    with cola:
+        st.header(f"{attribute}")
+    with colb:
+        if st.button("✏️ Editar"):
+            st.session_state.page = 'edit_attribute'
+            st.rerun()
+
+    # Mostrar información del atributo
     attr_info = attr_df[attr_df["Atributo"] == attribute].iloc[0]
-    st.write(f"**Definición:** {attr_info['Definición']}")
-    st.write(f"**Regla de Negocio:** {attr_info['Regla de Negocio']}")
-    st.write(f"**Sinónimos:** {attr_info['Sinónimos']}")
+
+    st.text_area("Definición", value=attr_info['Definición'], disabled=True)
+    # Crear dos columnas
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.text_input("Regla de Negocio", value=attr_info['Regla de Negocio'], disabled=True)
+        
+    
+    with col2:
+        st.text_input("Sinónimos", value=attr_info['Sinónimos'], disabled=True)
     
     if st.button("Volver al Término de Negocio"):
         st.session_state.page = 'tn_detail'
@@ -83,28 +99,41 @@ def add_new_attribute(attr_df, relation_df, tn):
     new_rule = st.text_area("Regla de Negocio")
     new_syn = st.text_input("Sinónimos")
     
-    if st.button("Guardar Atributo"):
-        new_attr_df = pd.DataFrame({
-            "Atributo": [new_attr],
-            "Definición": [new_def],
-            "Regla de Negocio": [new_rule],
-            "Sinónimos": [new_syn]
-        })
-        attr_df = pd.concat([attr_df, new_attr_df], ignore_index=True)
-        
-        new_relation = pd.DataFrame({
-            "Término de Negocio": [tn],
-            "Atributo": [new_attr]
-        })
-        relation_df = pd.concat([relation_df, new_relation], ignore_index=True)
-        
-        save_attributes_data(attr_df, "atributos.xlsx")
-        save_tn_attribute_relations(relation_df, "relaciones_tn_atributos.xlsx")
-        
-        st.success(f"Atributo '{new_attr}' agregado exitosamente a '{tn}'.")
-        st.session_state.page = 'tn_detail'
-        st.session_state.selected_tn = tn
-        st.rerun()
+    col3, col4, col5 = st.columns([4,1,1])
+    with col3:
+        st.write(" ")
+
+    with col4:
+        if st.button("❌ Cancelar"):
+            st.session_state.page = 'tn_detail'
+            st.rerun()
+    
+    with col5:
+        if st.button("💾 Guardar"):
+            new_attr_df = pd.DataFrame({
+                "Atributo": [new_attr],
+                "Definición": [new_def],
+                "Regla de Negocio": [new_rule],
+                "Sinónimos": [new_syn]
+            })
+            attr_df = pd.concat([attr_df, new_attr_df], ignore_index=True)
+            
+            new_relation = pd.DataFrame({
+                "Término de Negocio": [tn],
+                "Atributo": [new_attr]
+            })
+            relation_df = pd.concat([relation_df, new_relation], ignore_index=True)
+            
+            save_attributes_data(attr_df, "atributos.xlsx")
+            save_tn_attribute_relations(relation_df, "relaciones_tn_atributos.xlsx")
+            
+            st.success(f"Atributo '{new_attr}' agregado exitosamente a '{tn}'.")
+            st.session_state.page = 'tn_detail'
+            st.session_state.selected_tn = tn
+            st.rerun()
+
+
+    
 
 
 def edit_tn_details(df, attr_df, relation_df, tn):
@@ -114,7 +143,7 @@ def edit_tn_details(df, attr_df, relation_df, tn):
     tn_info = df[df["Término de negocio"] == tn].iloc[0]
     
     # Crear campos editables
-    new_concept = st.text_input("Concepto", value=tn_info['Concepto'])
+    new_concept = st.text_area("Concepto", value=tn_info['Concepto'])
     
     col1, col2 = st.columns(2)
     
@@ -169,3 +198,48 @@ def edit_tn_details(df, attr_df, relation_df, tn):
             with st.expander(attr["Atributo"]):
                 st.write(f"Definición:  \n" f"**{attr['Definición']}**")
                 st.write(f"Regla de Negocio:  \n" f"**{attr['Regla de Negocio']}**")
+
+    
+def edit_attribute_details(attr_df, attribute, tn):
+    st.header(f"Detalles del Atributo: {attribute}")
+    
+    attr_info = attr_df[attr_df["Atributo"] == attribute].iloc[0]
+    # Crear campos editables
+    new_definition = st.text_area("Definición", value=attr_info['Definición'])
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        new_business_rule = st.text_input("Regla de Negocio", value=attr_info['Regla de Negocio'])
+        
+    
+    with col2:
+        new_sinonims = st.text_input("Sinónimos", value=attr_info['Sinónimos'])
+        
+    
+    col3, col4, col5 = st.columns([4,1,1])
+    with col3:
+        st.write(" ")
+
+    with col4:
+        if st.button("❌ Cancelar"):
+            st.session_state.page = 'tn_detail'
+            st.session_state.selected_tn = tn
+            st.rerun()
+    
+    with col5:
+        if st.button("💾 Guardar"):
+            # Actualizar el DataFrame
+            attr_df.loc[attr_df["Atributo"] == attribute, "Definición"] = new_definition
+            attr_df.loc[attr_df["Atributo"] == attribute, "Regla de Negocio"] = new_business_rule
+            attr_df.loc[attr_df["Atributo"] == attribute, "Sinónimos"] = new_sinonims
+    
+            
+            # Guardar cambios en el archivo Excel
+            if save_excel_data(attr_df, "atributos.xlsx"):
+                st.success("Cambios guardados exitosamente")
+                # Cambiar el estado a 'tn_detail' para mostrar la versión actualizada
+                st.session_state.page = 'tn_detail'
+                st.rerun()
+            else:
+                st.error("Error al guardar los cambios")
