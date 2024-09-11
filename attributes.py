@@ -29,7 +29,16 @@ def display_tn_details(df, attr_df, relation_df, tn):
     
     # Mostrar atributos asociados en tarjetas
     st.markdown("---")
-    st.subheader("Atributos Asociados")
+
+    colc, cold = st.columns([5,1])
+    with colc:
+        st.subheader("Atributos Asociados")
+    with cold:
+        if st.button("➕ Agregar"):
+            st.session_state.page = 'add_attribute'
+            st.rerun()
+
+    
     tn_attributes = relation_df[relation_df["Término de Negocio"] == tn]
     
     col1, col2 = st.columns(2)
@@ -39,14 +48,19 @@ def display_tn_details(df, attr_df, relation_df, tn):
             with st.expander(f"**{attr["Atributo"]}**"):
                 st.write(f"Definición:  \n" f"**{attr['Definición']}**")
                 st.write(f"Regla de Negocio:  \n" f"**{attr['Regla de Negocio']}**")
-                if st.button(f"Ver detalle de {attr['Atributo']}"):
+                st.write(f"   \n")
+                col3,col4,col5 = st.columns([1,2,1])
+            with col3:
+                st.write("")
+            with col4:
+                if st.button("🧐 Ver más", key=f"btn_{attr['Atributo']}"):
                     st.session_state.selected_attribute = attr['Atributo']
                     st.session_state.page = 'attribute_detail'
-                    st.rerun()
+                    st.rerun()   
+            with col5:
+                st.write("")
     
-    if st.button("Agregar Nuevo Atributo"):
-        st.session_state.page = 'add_attribute'
-        st.rerun()
+    
 
 def display_attribute_details(attr_df, attribute, tn):
     st.header(f"Detalles del Atributo: {attribute}")
@@ -153,4 +167,5 @@ def edit_tn_details(df, attr_df, relation_df, tn):
         attr = attr_df[attr_df["Atributo"] == rel["Atributo"]].iloc[0]
         with (col1 if i % 2 == 0 else col2):
             with st.expander(attr["Atributo"]):
-                st.write(f"**Definición:** {attr['Definición'][:100]}...")
+                st.write(f"Definición:  \n" f"**{attr['Definición']}**")
+                st.write(f"Regla de Negocio:  \n" f"**{attr['Regla de Negocio']}**")

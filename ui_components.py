@@ -62,7 +62,7 @@ def display_explore_tn_page(df):
             with col3:
                 st.write("")
             with col4:
-                if st.button("👁️ Ver detalle", key=f"btn_{row['Término de negocio']}**"):
+                if st.button("🧐 Ver más", key=f"btn_{row['Término de negocio']}"):
                     st.session_state.selected_tn = row['Término de negocio']
                     st.session_state.page = 'tn_detail'
                     st.rerun()   
