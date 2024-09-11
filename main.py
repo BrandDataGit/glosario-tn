@@ -27,10 +27,6 @@ def main():
     menu = ["Explorar Términos"]
     choice = st.sidebar.selectbox("Menú", menu)
 
-
-
-# 
-
     if choice == "Explorar Términos":
         if st.session_state.page != 'explore':
             if st.button("⬅️ Regresar"):

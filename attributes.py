@@ -7,11 +7,17 @@ def display_tn_details(df, attr_df, relation_df, tn):
     
     # Mostrar información del término de negocio
     tn_info = df[df["Término de negocio"] == tn].iloc[0]
-    st.write(f"**Concepto:** {tn_info['Concepto']}")
-    st.write(f"**Master Data Steward:** {tn_info['Master Data Steward']}")
-    st.write(f"**Sujeto:** {tn_info['Sujeto']}")
-    st.write(f"**Capacidad:** {tn_info['Capacidad']}")
-    st.write(f"**Proceso de Valor:** {tn_info['Proceso de Valor']}")
+    st.text_input("Concepto", value=tn_info['Concepto'], disabled=True)
+    # Crear dos columnas
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.text_input("Capacidad", value=tn_info['Capacidad'], disabled=True)
+        st.text_input("Sujeto", value=tn_info['Sujeto'], disabled=True)
+    
+    with col2:
+        st.text_input("Proceso de Valor", value=tn_info['Proceso de Valor'], disabled=True)
+        st.text_input("Master Data Steward", value=tn_info['Master Data Steward'], disabled=True)
     
     # Mostrar atributos asociados en tarjetas
     st.markdown("---")
