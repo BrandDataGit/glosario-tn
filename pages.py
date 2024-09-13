@@ -129,11 +129,11 @@ def edit_term_detail(term_id):
                 # Botones de acción
                 col_cancel, col_save = st.columns(2)
                 with col_cancel:
-                    if st.form_submit_button("Cancelar"):
-                        st.session_state.page = 'tn_detail'
+                    if st.form_submit_button("❌ Cancelar"):
+                        st.session_state.page = 'term_detail'
                         st.rerun()
                 with col_save:
-                    if st.form_submit_button("Guardar"):
+                    if st.form_submit_button("💾 Guardar"):
                         # Actualizar los datos en Supabase
                         updated_data = {
                             'concepto': new_concept,
@@ -146,7 +146,7 @@ def edit_term_detail(term_id):
                         supabase.table('termino-negocio').update(updated_data).eq('Id', term_id).execute()
                         
                         st.success("Cambios guardados exitosamente.")
-                        st.session_state.page = 'tn_detail'
+                        st.session_state.page = 'term_detail'
                         st.rerun()
 
         else:
