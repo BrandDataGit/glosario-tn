@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from supabase_config import supabase
 from utils import load_termino_negocio_data
-from pages import display_terms, display_term_detail
+from pages import display_terms, display_term_detail, edit_term_detail
 
 st.set_page_config(page_title="Glosario de Términos de Negocio", layout="wide")
 
@@ -61,9 +61,10 @@ def main():
 
         if st.session_state.page == 'term_explore':
             display_terms(tn_df)
-        elif st.session_state.page == 'tn_detail':
+        elif st.session_state.page == 'term_detail':
             display_term_detail(st.session_state.selected_term)
-
+        elif st.session_state.page == 'term_edit':
+            edit_term_detail(st.session_state.selected_term)
 
 
 if __name__ == "__main__":
