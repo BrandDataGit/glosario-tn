@@ -1,7 +1,8 @@
 import streamlit as st
-from data_loader import load_excel_data, save_excel_data, load_attributes_data, save_attributes_data, load_tn_attribute_relations, save_tn_attribute_relations
-from ui_components import display_explore_tn_page
-from attributes import display_tn_details, display_attribute_details, add_new_attribute, edit_tn_details, edit_attribute_details
+import pandas as pd
+from supabase_config import supabase
+from utils import load_termino_negocio_data
+from pages import display_terms, display_term_detail
 
 st.set_page_config(page_title="Glosario de Términos de Negocio", layout="wide")
 
@@ -10,43 +11,60 @@ def main():
 
     # Inicializar variables de sesión si no existen
     if 'page' not in st.session_state:
-        st.session_state.page = 'explore'
-    if 'selected_tn' not in st.session_state:
-        st.session_state.selected_tn = None
+        st.session_state.page = 'term_explore'
+    if 'selected_term' not in st.session_state:
+        st.session_state.selected_term = None
     if 'selected_attribute' not in st.session_state:
         st.session_state.selected_attribute = None
 
     # Cargar datos
-    df = load_excel_data("glosario.xlsx")
-    attr_df = load_attributes_data("atributos.xlsx")
-    relation_df = load_tn_attribute_relations("relaciones_tn_atributos.xlsx")
-    if df is None or attr_df is None or relation_df is None:
-        return
+    tn_df = load_termino_negocio_data()
 
+    if tn_df.empty:
+        st.warning("No se pudieron cargar los datos. Por favor, verifica tu conexión a Supabase.")
+        return
+    
     # Menú de navegación
     menu = ["Explorar Términos"]
     choice = st.sidebar.selectbox("Menú", menu)
 
+     # Filtros
+    st.sidebar.header("Filtros")
+    
+    # Crear filtros dinámicamente
+    filter_columns = ['master-data-steward', 'proceso-valor', 'origen', 'estatus', 'sujeto', 'capacidad']
+    filters = {}
+    
+    for column in filter_columns:
+        if column in tn_df.columns:
+            options = ['Todos'] + list(tn_df[column].unique())
+            filters[column] = st.sidebar.selectbox(f"Filtrar por {column}", options)
+        else:
+            st.warning(f"Columna '{column}' no encontrada en el DataFrame")
+
+    # Filtro por nombre del término
+    term_filter = st.sidebar.text_input("Buscar por nombre del término")
+
+    # Aplicar filtros
+    for column, value in filters.items():
+        if value != 'Todos':
+            tn_df = tn_df[tn_df[column] == value]
+
+    if term_filter:
+        tn_df = tn_df[tn_df['nombre-termino'].str.contains(term_filter, case=False)]
+
     if choice == "Explorar Términos":
-        if st.session_state.page != 'explore':
-            if st.button("🚀 Home"):
-                st.session_state.page = 'explore'
+        if st.session_state.page != 'term_explore':
+            if st.button("🚀 Regresar"):
+                st.session_state.page = 'term_explore'
                 st.rerun()
 
-        if st.session_state.page == 'explore':
-            display_explore_tn_page(df)
+        if st.session_state.page == 'term_explore':
+            display_terms(tn_df)
         elif st.session_state.page == 'tn_detail':
-            display_tn_details(df, attr_df, relation_df, st.session_state.selected_tn)
-        elif st.session_state.page == 'tn_edit':
-            edit_tn_details(df, attr_df, relation_df, st.session_state.selected_tn)
-        elif st.session_state.page == 'attribute_detail':
-            display_attribute_details(attr_df, st.session_state.selected_attribute, st.session_state.selected_tn)
-        elif st.session_state.page == 'add_attribute':
-            add_new_attribute(attr_df, relation_df, st.session_state.selected_tn)
-        elif st.session_state.page == 'edit_attribute':
-            edit_attribute_details(attr_df, st.session_state.selected_attribute, st.session_state.selected_tn)
+            display_term_detail(st.session_state.selected_term)
 
-        
+
 
 if __name__ == "__main__":
     main()
