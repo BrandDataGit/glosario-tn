@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from supabase_config import supabase
-from utils import load_termino_negocio_data
+from utils import load_termino_negocio_data, display_breadcrumbs
 from pages import (display_terms, display_term_detail, edit_term_detail, 
 display_associate_data_page, display_attribute_detail, 
 edit_attribute_detail, display_add_new_attribute)
@@ -56,9 +56,10 @@ def main():
         tn_df = tn_df[tn_df['nombre-termino'].str.contains(term_filter, case=False)]
 
     
+    
     if choice == "Explorar Términos":
         if st.session_state.page != 'term_explore':
-            if st.button("🚀 Regresar"):
+            if st.button("🚀 Home"):
                 st.session_state.page = 'term_explore'
                 st.rerun()
 

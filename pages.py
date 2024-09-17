@@ -6,7 +6,6 @@ get_related_terms, display_breadcrumbs)
 from supabase_config import supabase
 
 def display_terms(df):
-   #display_breadcrumbs('term_explore')
     st.header("Explorar")
 
     # Mostrar número de resultados
@@ -185,7 +184,7 @@ def edit_term_detail(term_id):
 def display_associate_data_page(term_id):
     st.header("Asociar Datos Existentes")
     
-    if st.button("🚀 Regresar al Detalle del Término"):
+    if st.button("↩️ Regresar al Detalle del Término"):
         st.session_state.page = 'term_detail'
         st.rerun()
     
@@ -242,7 +241,7 @@ def display_attribute_detail(data_id):
             else:
                 st.write("No hay términos de negocio relacionados.")
 
-            if st.button("🚀 Regresar al Detalle del Término"):
+            if st.button("↩️ Regresar al Detalle del Término"):
                 st.session_state.page = 'term_detail'
                 st.rerun()
         else:
