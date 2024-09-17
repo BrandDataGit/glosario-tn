@@ -86,3 +86,38 @@ def get_related_terms(data_id):
         response = supabase.table('termino-negocio').select('*').in_('Id', term_ids).execute()
         return response.data
     return []
+
+def display_breadcrumbs(current_page, term_name=None, data_name=None):
+    breadcrumbs = []
+    
+    if current_page in ['term_explore', 'term_detail', 'data_detail']:
+        breadcrumbs.append("Explorar")
+    
+    if current_page in ['term_detail', 'data_detail'] and term_name:
+        breadcrumbs.append(term_name)
+    
+    if current_page == 'data_detail' and data_name:
+        breadcrumbs.append(data_name)
+
+    breadcrumb_html = " &gt; ".join(breadcrumbs)
+    
+    # Estilo CSS para los breadcrumbs
+    breadcrumb_style = """
+        <style>
+        .breadcrumbs {
+            font-size: 1.5em;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 1em;
+        }
+        </style>
+    """
+    
+    # Combinar el estilo y el contenido de los breadcrumbs
+    breadcrumbs_with_style = f"""
+        {breadcrumb_style}
+        <div class="breadcrumbs">{breadcrumb_html}</div>
+    """
+    
+    # Renderizar los breadcrumbs con estilo
+    st.markdown(breadcrumbs_with_style, unsafe_allow_html=True)

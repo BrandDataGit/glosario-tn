@@ -55,6 +55,7 @@ def main():
     if term_filter:
         tn_df = tn_df[tn_df['nombre-termino'].str.contains(term_filter, case=False)]
 
+    
     if choice == "Explorar Términos":
         if st.session_state.page != 'term_explore':
             if st.button("🚀 Regresar"):

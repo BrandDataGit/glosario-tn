@@ -2,10 +2,11 @@ import streamlit as st
 import pandas as pd
 from utils import (display_status_indicator, get_associated_data, 
 associate_existing_data, add_new_data, display_asociable_attributes, 
-get_related_terms)
+get_related_terms, display_breadcrumbs)
 from supabase_config import supabase
 
 def display_terms(df):
+   #display_breadcrumbs('term_explore')
     st.header("Explorar")
 
     # Mostrar número de resultados
@@ -77,6 +78,7 @@ def display_term_detail(term_id):
         term_details = response.data[0] if response.data else None
 
         if term_details:
+            display_breadcrumbs('term_detail', term_name=term_details['nombre-termino'])
             cola, colb = st.columns([5,1])
             with cola:
                 st.header(f"{term_details['nombre-termino']}")
@@ -195,6 +197,16 @@ def display_attribute_detail(data_id):
         data_details = response.data[0] if response.data else None
 
         if data_details:
+            # Obtener el nombre del término asociado
+            term_response = supabase.table('termino-dato').select('termino-id').eq('dato-id', data_id).execute()
+            if term_response.data:
+                term_id = term_response.data[0]['termino-id']
+                term_details = supabase.table('termino-negocio').select('nombre-termino').eq('Id', term_id).execute().data[0]
+                term_name = term_details['nombre-termino']
+            else:
+                term_name = "Término Desconocido"
+
+            display_breadcrumbs('data_detail', term_name=term_name, data_name=data_details['dato'])
             col1, col2 = st.columns([5,1])
             with col1:
                 st.header(f"Detalle del Dato: {data_details['dato']}")
