@@ -4,7 +4,7 @@ from supabase_config import supabase
 from utils import load_termino_negocio_data
 from pages import (display_terms, display_term_detail, edit_term_detail, 
 display_associate_data_page, display_attribute_detail, 
-edit_attribute_detail)
+edit_attribute_detail, display_add_new_attribute)
 
 st.set_page_config(page_title="Glosario de Términos de Negocio", layout="wide")
 
@@ -73,6 +73,8 @@ def main():
             display_attribute_detail(st.session_state.selected_data)
         elif st.session_state.page == 'data_edit':
             edit_attribute_detail(st.session_state.editing_data)
+        elif st.session_state.page == 'add_new_data':
+            display_add_new_attribute(st.session_state.selected_term)
         
 
 

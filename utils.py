@@ -72,51 +72,17 @@ def associate_existing_data(term_id):
     st.session_state.selected_term = term_id
     st.rerun()
 
-
 def add_new_data(term_id):
-    with st.form("add_new_data_form"):
-        new_dato = st.text_input("Dato")
-        new_definicion = st.text_area("Definición")
-        new_formato_entrada = st.text_input("Formato de entrada")
-        new_valores_permitidos = st.text_area("Valores permitidos (JSON)")
-        new_valor_predeterminado = st.text_input("Valor predeterminado")
-        new_dato_obligatorio = st.checkbox("Dato obligatorio")
-        new_regla_negocio = st.text_area("Regla de negocio")
-        new_tipo_dato = st.text_input("Tipo de dato")
-        new_uso = st.text_input("Uso")
-        new_estatus = st.selectbox("Estatus", ["captura", "aprobacion", "aprobado"])
-        new_comentario = st.text_area("Comentario")
+    st.session_state.page = 'add_new_data'
+    st.session_state.selected_term = term_id
+    st.rerun()
 
-        if st.form_submit_button("Agregar nuevo dato"):
-            # Insertar el nuevo dato en la tabla dato-negocio
-            response = supabase.table('dato-negocio').insert({
-                'dato': new_dato,
-                'definicion': new_definicion,
-                'formato_entrada': new_formato_entrada,
-                'valores_permitidos': new_valores_permitidos,
-                'valor_predeterminado': new_valor_predeterminado,
-                'dato_obligatorio': new_dato_obligatorio,
-                'regla_negocio': new_regla_negocio,
-                'tipo_dato': new_tipo_dato,
-                'uso': new_uso,
-                'estatus': new_estatus,
-                'comentario': new_comentario,
-                'created_at': 'now()',
-                'user_create': st.session_state.get('user_id', 'unknown')
-            }).execute()
-
-            if response.data:
-                new_data_id = response.data[0]['id']
-                # Crear la relación en la tabla termino-dato
-                supabase.table('termino-dato').insert({
-                    'termino-id': term_id,
-                    'dato-id': new_data_id,
-                    'estatus': 'activo',
-                    'created_at': 'now()',
-                    'user_create': st.session_state.get('user_id', 'unknown')
-                }).execute()
-
-                st.success("Nuevo dato agregado y asociado exitosamente.")
-                st.rerun()
-            else:
-                st.error("Error al agregar el nuevo dato.")
+def get_related_terms(data_id):
+    # Obtener los términos asociados al dato
+    response = supabase.table('termino-dato').select('termino-id').eq('dato-id', data_id).execute()
+    term_ids = [item['termino-id'] for item in response.data]
+    
+    if term_ids:
+        response = supabase.table('termino-negocio').select('*').in_('Id', term_ids).execute()
+        return response.data
+    return []

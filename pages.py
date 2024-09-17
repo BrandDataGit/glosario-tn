@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
-from utils import display_status_indicator, get_associated_data, associate_existing_data, add_new_data, display_asociable_attributes
+from utils import (display_status_indicator, get_associated_data, 
+associate_existing_data, add_new_data, display_asociable_attributes, 
+get_related_terms)
 from supabase_config import supabase
 
 def display_terms(df):
@@ -213,6 +215,21 @@ def display_attribute_detail(data_id):
             st.text_input("Estatus", value=data_details['estatus'], disabled=True)
             st.text_area("Comentario", value=data_details['comentario'], disabled=True)
 
+            # Nueva sección: Términos de Negocio Relacionados
+            st.subheader("Términos de Negocio Relacionados")
+            related_terms = get_related_terms(data_id)
+            if related_terms:
+                for term in related_terms:
+                    with st.expander(f"{display_status_indicator(term['estatus'])} {term['nombre-termino']}"):
+                        st.write(f"Concepto: {term['concepto']}")
+                        st.write(f"Proceso de Valor: {term['proceso-valor']}")
+                        if st.button("Ver más", key=f"view_term_{term['Id']}"):
+                            st.session_state.selected_term = term['Id']
+                            st.session_state.page = 'term_detail'
+                            st.rerun()
+            else:
+                st.write("No hay términos de negocio relacionados.")
+
             if st.button("🚀 Regresar al Detalle del Término"):
                 st.session_state.page = 'term_detail'
                 st.rerun()
@@ -264,3 +281,63 @@ def edit_attribute_detail(data_details):
                     st.rerun()
                 except Exception as e:
                     st.error(f"Error al guardar los cambios: {str(e)}")
+
+def display_add_new_attribute(term_id):
+    st.header("Agregar Nuevo Dato de Negocio")
+
+    with st.form("add_new_data_form"):
+        new_dato = st.text_input("Dato")
+        new_definicion = st.text_area("Definición")
+        new_formato_entrada = st.text_input("Formato de entrada")
+        new_valores_permitidos = st.text_area("Valores permitidos (JSON)")
+        new_valor_predeterminado = st.text_input("Valor predeterminado")
+        new_dato_obligatorio = st.checkbox("Dato obligatorio")
+        new_regla_negocio = st.text_area("Regla de negocio")
+        new_tipo_dato = st.text_input("Tipo de dato")
+        new_uso = st.text_input("Uso")
+        new_estatus = st.selectbox("Estatus", ["captura", "aprobacion", "aprobado"])
+        new_comentario = st.text_area("Comentario")
+
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.form_submit_button("❌ Cancelar"):
+                st.session_state.page = 'term_detail'
+                st.rerun()
+        with col2:
+            if st.form_submit_button("💾 Guardar"):
+                try:
+                    # Insertar nuevo dato en la tabla dato-negocio
+                    data_response = supabase.table('dato-negocio').insert({
+                        'dato': new_dato,
+                        'definicion': new_definicion,
+                        'formato_entrada': new_formato_entrada,
+                        'valores_permitidos': new_valores_permitidos,
+                        'valor_predeterminado': new_valor_predeterminado,
+                        'dato_obligatorio': new_dato_obligatorio,
+                        'regla_negocio': new_regla_negocio,
+                        'tipo_dato': new_tipo_dato,
+                        'uso': new_uso,
+                        'estatus': new_estatus,
+                        'comentario': new_comentario
+                    }).execute()
+
+                    if data_response.data:
+                        new_data_id = data_response.data[0]['id']
+                        
+                        # Crear relación en la tabla termino-dato
+                        relation_response = supabase.table('termino-dato').insert({
+                            'termino-id': term_id,
+                            'dato-id': new_data_id,
+                            'estatus': 'activo'
+                        }).execute()
+
+                        if relation_response.data:
+                            st.success("Nuevo dato agregado y asociado exitosamente.")
+                            st.session_state.page = 'term_detail'
+                            st.rerun()
+                        else:
+                            st.error("Error al crear la relación entre el término y el dato.")
+                    else:
+                        st.error("Error al agregar el nuevo dato.")
+                except Exception as e:
+                    st.error(f"Error al procesar la solicitud: {str(e)}")
