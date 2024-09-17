@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from utils import display_status_indicator
+from utils import display_status_indicator, get_associated_data, associate_existing_data, add_new_data, display_asociable_attributes
 from supabase_config import supabase
 
 def display_terms(df):
@@ -97,7 +97,30 @@ def display_term_detail(term_id):
                 st.text_input("Proceso de Valor", value=term_details['proceso-valor'], disabled=True)
                 st.text_input("Master Data Steward", value=term_details['master-data-steward'], disabled=True)
 
-            # Puedes agregar más campos aquí si es necesario
+            # Mostrar datos de negocio asociados
+            st.subheader("Datos de Negocio Asociados")
+            associated_data = get_associated_data(term_id)
+            if associated_data:
+                for data in associated_data:
+                    with st.expander(f"{display_status_indicator(data['estatus'])} {data['dato']}"):
+                        st.write(f"Definición: {data['definicion']}")
+                        st.write(f"Tipo de dato: {data['tipo_dato']}")
+                        if st.button("Ver detalle", key=f"detail_{data['id']}"):
+                            st.session_state.selected_data = data['id']
+                            st.session_state.page = 'data_detail'
+                            st.rerun()
+            else:
+                st.write("No hay datos de negocio asociados.")
+
+            # Botones para asociar datos existentes o agregar nuevos
+            col_associate, col_add = st.columns(2)
+            with col_associate:
+                if st.button("Asociar dato existente"):
+                    associate_existing_data(term_id)
+            with col_add:
+                if st.button("Agregar dato nuevo"):
+                    add_new_data(term_id)
+
         else:
             st.write("No se encontraron detalles para este término.")
     except Exception as e:
@@ -153,3 +176,91 @@ def edit_term_detail(term_id):
             st.write("No se encontraron detalles para este término.")
     except Exception as e:
         st.error(f"Error al editar los detalles del término: {str(e)}")
+
+
+def display_associate_data_page(term_id):
+    st.header("Asociar Datos Existentes")
+    
+    if st.button("🚀 Regresar al Detalle del Término"):
+        st.session_state.page = 'term_detail'
+        st.rerun()
+    
+    display_asociable_attributes(term_id)
+
+def display_attribute_detail(data_id):
+    try:
+        response = supabase.table('dato-negocio').select('*').eq('id', data_id).execute()
+        data_details = response.data[0] if response.data else None
+
+        if data_details:
+            col1, col2 = st.columns([5,1])
+            with col1:
+                st.header(f"Detalle del Dato: {data_details['dato']}")
+            with col2:
+                if st.button("✏️ Editar"):
+                    st.session_state.page = 'data_edit'
+                    st.session_state.editing_data = data_details
+                    st.rerun()
+
+            st.text_area("Definición", value=data_details['definicion'], disabled=True)
+            st.text_input("Formato de entrada", value=data_details['formato_entrada'], disabled=True)
+            st.text_area("Valores permitidos", value=data_details['valores_permitidos'], disabled=True)
+            st.text_input("Valor predeterminado", value=data_details['valor_predeterminado'], disabled=True)
+            st.checkbox("Dato obligatorio", value=data_details['dato_obligatorio'], disabled=True)
+            st.text_area("Regla de negocio", value=data_details['regla_negocio'], disabled=True)
+            st.text_input("Tipo de dato", value=data_details['tipo_dato'], disabled=True)
+            st.text_input("Uso", value=data_details['uso'], disabled=True)
+            st.text_input("Estatus", value=data_details['estatus'], disabled=True)
+            st.text_area("Comentario", value=data_details['comentario'], disabled=True)
+
+            if st.button("🚀 Regresar al Detalle del Término"):
+                st.session_state.page = 'term_detail'
+                st.rerun()
+        else:
+            st.write("No se encontraron detalles para este dato.")
+    except Exception as e:
+        st.error(f"Error al cargar los detalles del dato: {str(e)}")
+
+def edit_attribute_detail(data_details):
+    st.header(f"Editar Dato: {data_details['dato']}")
+
+    with st.form("edit_data_form"):
+        new_definicion = st.text_area("Definición", value=data_details['definicion'])
+        new_formato_entrada = st.text_input("Formato de entrada", value=data_details['formato_entrada'])
+        new_valores_permitidos = st.text_area("Valores permitidos", value=data_details['valores_permitidos'])
+        new_valor_predeterminado = st.text_input("Valor predeterminado", value=data_details['valor_predeterminado'])
+        new_dato_obligatorio = st.checkbox("Dato obligatorio", value=data_details['dato_obligatorio'])
+        new_regla_negocio = st.text_area("Regla de negocio", value=data_details['regla_negocio'])
+        new_tipo_dato = st.text_input("Tipo de dato", value=data_details['tipo_dato'])
+        new_uso = st.text_input("Uso", value=data_details['uso'])
+        new_estatus = st.selectbox("Estatus", ["captura", "aprobacion", "aprobado"], index=["captura", "aprobacion", "aprobado"].index(data_details['estatus']))
+        new_comentario = st.text_area("Comentario", value=data_details['comentario'])
+
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.form_submit_button("❌ Cancelar"):
+                st.session_state.page = 'data_detail'
+                st.rerun()
+        with col2:
+            if st.form_submit_button("💾 Guardar"):
+                try:
+                    updated_data = {
+                        'definicion': new_definicion,
+                        'formato_entrada': new_formato_entrada,
+                        'valores_permitidos': new_valores_permitidos,
+                        'valor_predeterminado': new_valor_predeterminado,
+                        'dato_obligatorio': new_dato_obligatorio,
+                        'regla_negocio': new_regla_negocio,
+                        'tipo_dato': new_tipo_dato,
+                        'uso': new_uso,
+                        'estatus': new_estatus,
+                        'comentario': new_comentario
+                    }
+                    
+                    supabase.table('dato-negocio').update(updated_data).eq('id', data_details['id']).execute()
+                    
+                    st.success("Cambios guardados exitosamente.")
+                    st.session_state.page = 'data_detail'
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error al guardar los cambios: {str(e)}")
