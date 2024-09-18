@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from aifeatures import extract_pdf_content, ai_review
+from aifeatures import extract_pdf_content, ai_review, ai_attribute_review
 from utils import (display_status_indicator, get_associated_data, 
 associate_existing_data, add_new_data, display_asociable_attributes, 
 get_related_terms, display_breadcrumbs)
@@ -289,7 +289,7 @@ def display_attribute_detail(data_id):
                 else:
                     term_name = "Término no asociado"
 
-            colc, cold, colf, colg = st.columns([8, 1.5, 1, 1])
+            colc, cold, colf, colg, colh = st.columns([8,1.6,1.2,1.2,1.2])
             with colc:
                 display_breadcrumbs('data_detail', term_name=term_name, data_name=data_details['dato'])
             with cold:
@@ -308,6 +308,13 @@ def display_attribute_detail(data_id):
                     st.session_state.page = 'edit_attribute_status'
                     st.session_state.editing_attribute = data_details
                     st.rerun()
+            with colh:
+                if st.button("✨ TecGPT"):
+                    with st.spinner('generando feedback...'):
+                        pdf_content = extract_pdf_content('conocimiento/LineamientosDatosNegocio.pdf')
+                        ai_feedback = ai_attribute_review(data_id, pdf_content)
+                    st.success("Análisis de IA completado y guardado.")
+                    st.rerun()
             
             st.header(f"📑 {data_details['dato']}")
 
@@ -322,6 +329,14 @@ def display_attribute_detail(data_id):
             st.text_input("Estatus", value=data_details['estatus'], disabled=True)
             st.text_area("Comentario", value=data_details['comentario'], disabled=True)
 
+            # Mostrar la retroalimentación de la IA si está disponible
+            if data_details.get('ai_review'):
+                st.subheader("✨Retroalimentación de la IA:")
+                st.text_area("", value=data_details['ai_review'], height=300, disabled=True)
+                ai_review_date = datetime.fromisoformat(data_details['ai_review_date'])
+                formatted_date = ai_review_date.strftime("%d/%m/%Y")
+                st.write(f"AI feedback solicitado el: {formatted_date}")
+            
             # Nueva sección: Términos de Negocio Relacionados
             st.subheader("Términos de Negocio Relacionados")
             related_terms = get_related_terms(data_id)
