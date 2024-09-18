@@ -1,10 +1,12 @@
 import streamlit as st
 import pandas as pd
+from aifeatures import extract_pdf_content, ai_review
 from utils import (display_status_indicator, get_associated_data, 
 associate_existing_data, add_new_data, display_asociable_attributes, 
 get_related_terms, display_breadcrumbs)
 from supabase_config import supabase
 from itertools import zip_longest
+import os
 
 def display_terms(df):
     st.header("Explorar")
@@ -102,7 +104,7 @@ def display_term_detail(term_id):
         term_details = response.data[0] if response.data else None
 
         if term_details:
-            colc, cold, colf, colg = st.columns([8,1,1,1])
+            colc, cold, colf, colg, colh = st.columns([7,1,1,1.5,2])
             with colc:
                 display_breadcrumbs('term_detail', term_name=term_details['nombre-termino'])
             with cold:
@@ -114,11 +116,17 @@ def display_term_detail(term_id):
                     st.session_state.page = 'term_edit'
                     st.rerun()
             with colg:
-                # Agregar botón de estatus clickeable
                 status_button = display_status_indicator(term_details['estatus'])
                 if st.button(f"{status_button} Estatus"):
                     st.session_state.page = 'edit_status'
                     st.session_state.editing_term = term_details
+                    st.rerun()
+            with colh:
+                if st.button("🤖 Revisión IA"):
+                    with st.spinner('La IA está analizando...'):
+                        pdf_content = extract_pdf_content('conocimiento')
+                        ai_feedback = ai_review(term_id, pdf_content)
+                    st.session_state.ai_feedback = ai_feedback
                     st.rerun()
 
             st.header(f"📚 {term_details['nombre-termino']}")
@@ -136,6 +144,11 @@ def display_term_detail(term_id):
             with col2:
                 st.text_input("Proceso de Valor", value=term_details['proceso-valor'], disabled=True)
                 st.text_input("Master Data Steward", value=term_details['master-data-steward'], disabled=True)
+
+            # Mostrar la retroalimentación de la IA si está disponible
+            if 'ai_feedback' in st.session_state and st.session_state.ai_feedback:
+                st.subheader("Retroalimentación de la IA:")
+                st.text_area("", value=st.session_state.ai_feedback, height=300, disabled=True)
 
             # Mostrar datos de negocio asociados y botones para asociar datos existentes o agregar nuevos
             col_header, col_associate, col_add = st.columns([9,1,1])

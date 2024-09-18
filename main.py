@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-from supabase_config import supabase
 from utils import load_termino_negocio_data
 from pages import (display_terms, display_term_detail, edit_term_detail, 
 display_associate_data_page, display_attribute_detail, 
