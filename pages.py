@@ -125,7 +125,7 @@ def display_term_detail(term_id):
             with colh:
                 if st.button("✨ TecGPT"):
                     with st.spinner('generando feedback...'):
-                        pdf_content = extract_pdf_content('conocimiento')
+                        pdf_content = extract_pdf_content('conocimiento/LineamientosTerminosNegocio.pdf')
                         ai_feedback = ai_review(term_id, pdf_content)
                     st.success("Análisis de IA completado y guardado.")
                     st.rerun()
