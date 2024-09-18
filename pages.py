@@ -8,6 +8,14 @@ from itertools import zip_longest
 
 def display_terms(df):
     st.header("Explorar")
+
+    # Añadir filtro de búsqueda por nombre del término
+    term_filter = st.text_input("Buscar por nombre del término")
+
+    # Aplicar filtro por nombre del término
+    if term_filter:
+        df = df[df['nombre-termino'].str.contains(term_filter, case=False)]
+
     # Mostrar número de resultados
     st.write(f"Mostrando {len(df)} términos de negocio")
 
@@ -94,7 +102,7 @@ def display_term_detail(term_id):
         term_details = response.data[0] if response.data else None
 
         if term_details:
-            colc, cold, colf = st.columns([10,1,1])
+            colc, cold, colf, colg = st.columns([8,1,1,1])
             with colc:
                 display_breadcrumbs('term_detail', term_name=term_details['nombre-termino'])
             with cold:
@@ -104,6 +112,13 @@ def display_term_detail(term_id):
             with colf:
                 if st.button("✏️ Editar"):
                     st.session_state.page = 'term_edit'
+                    st.rerun()
+            with colg:
+                # Agregar botón de estatus clickeable
+                status_button = display_status_indicator(term_details['estatus'])
+                if st.button(f"{status_button} Estatus"):
+                    st.session_state.page = 'edit_status'
+                    st.session_state.editing_term = term_details
                     st.rerun()
 
             st.header(f"📚 {term_details['nombre-termino']}")
@@ -247,25 +262,17 @@ def display_attribute_detail(data_id):
         data_details = response.data[0] if response.data else None
 
         if data_details:
-            # Obtener el ID del término de la sesión
             term_id = st.session_state.get('selected_term')
-
+            term_name = "Término Desconocido"
             if term_id:
-                # Verificar si el término está asociado con este dato
                 term_data_response = supabase.table('termino-dato').select('*').eq('termino-id', term_id).eq('dato-id', data_id).execute()
-                
                 if term_data_response.data:
-                    # El término está asociado, obtener su nombre
                     term_details = supabase.table('termino-negocio').select('nombre-termino').eq('Id', term_id).execute().data[0]
                     term_name = term_details['nombre-termino']
                 else:
-                    # El término no está asociado, usar un valor por defecto
                     term_name = "Término no asociado"
-            else:
-                term_name = "Término Desconocido"
 
-            # Mostrar las migas de pan con el término correcto
-            colc, cold, colf = st.columns([10, 1.5, 1])
+            colc, cold, colf, colg = st.columns([8, 1.5, 1, 1])
             with colc:
                 display_breadcrumbs('data_detail', term_name=term_name, data_name=data_details['dato'])
             with cold:
@@ -276,6 +283,13 @@ def display_attribute_detail(data_id):
                 if st.button("✏️ Editar"):
                     st.session_state.page = 'data_edit'
                     st.session_state.editing_data = data_details
+                    st.rerun()
+            with colg:
+                # Agregar botón de estatus clickeable
+                status_button = display_status_indicator(data_details['estatus'])
+                if st.button(f"{status_button} Estatus"):
+                    st.session_state.page = 'edit_attribute_status'
+                    st.session_state.editing_attribute = data_details
                     st.rerun()
             
             st.header(f"📑 {data_details['dato']}")
@@ -459,3 +473,63 @@ def display_add_new_attribute(term_id):
                         st.error("Error al agregar el nuevo dato.")
                 except Exception as e:
                     st.error(f"Error al procesar la solicitud: {str(e)}")
+
+def edit_term_status(term_details):
+    st.header(f"Estatus: 📚{term_details['nombre-termino']}")
+
+    with st.form("edit_status_form"):
+        new_status = st.selectbox("Estatus", ["captura", "por aprobar", "aprobado"], index=["captura", "por aprobar", "aprobado"].index(term_details['estatus']))
+        new_comments = st.text_area("Comentarios", value=term_details.get('comentarios', ''))
+
+        col_space, col1, col2 = st.columns([7,1,1])
+        with col_space:
+            st.write("")
+        with col1:
+            if st.form_submit_button("❌ Cancelar"):
+                st.session_state.page = 'term_detail'
+                st.rerun()
+        with col2:
+            if st.form_submit_button("💾 Guardar"):
+                try:
+                    updated_data = {
+                        'estatus': new_status,
+                        'comentarios': new_comments
+                    }
+                    
+                    supabase.table('termino-negocio').update(updated_data).eq('Id', term_details['Id']).execute()
+                    
+                    st.success("Cambios guardados exitosamente.")
+                    st.session_state.page = 'term_detail'
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error al guardar los cambios: {str(e)}")
+
+def edit_attribute_status(data_details):
+    st.header(f"Editar Estatus: 📑{data_details['dato']}")
+
+    with st.form("edit_attribute_status_form"):
+        new_status = st.selectbox("Estatus", ["captura", "por aprobar", "aprobado"], index=["captura", "por aprobar", "aprobado"].index(data_details['estatus']))
+        new_comments = st.text_area("Comentarios", value=data_details.get('comentario', ''))
+
+        col_space, col1, col2 = st.columns([7,1,1])
+        with col_space:
+            st.write("")
+        with col1:
+            if st.form_submit_button("❌ Cancelar"):
+                st.session_state.page = 'data_detail'
+                st.rerun()
+        with col2:
+            if st.form_submit_button("💾 Guardar"):
+                try:
+                    updated_data = {
+                        'estatus': new_status,
+                        'comentario': new_comments
+                    }
+                    
+                    supabase.table('dato-negocio').update(updated_data).eq('id', data_details['id']).execute()
+                    
+                    st.success("Cambios guardados exitosamente.")
+                    st.session_state.page = 'data_detail'
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error al guardar los cambios: {str(e)}")

@@ -18,7 +18,7 @@ def load_termino_negocio_data():
 def display_status_indicator(status):
     status_map = {
         "captura": "⚪",  # Punto sin rellenar
-        "aprobacion": "🟡",  # Punto relleno amarillo
+        "por aprobar": "🟡",  # Punto relleno amarillo
         "aprobado": "🟢",  # Punto relleno verde
     }
     return status_map.get(status.lower(), "⚪")  # Default to empty circle
