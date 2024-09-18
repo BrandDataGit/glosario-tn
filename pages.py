@@ -12,7 +12,7 @@ def display_terms(df):
     col1, col2 = st.columns(2)
     for i, (_, row) in enumerate(df.iterrows()):
         with (col1 if i % 2 == 0 else col2):
-            with st.expander(f"{display_status_indicator(row['estatus'])} **{row['nombre-termino']}**"):
+            with st.expander(f"{display_status_indicator(row['estatus'])} 📚 **{row['nombre-termino']}**"):
                 st.write(f"**Concepto:**  \n" f"{row['concepto']}")
                 #st.write(f"Master Data Steward: **{row['Master Data Steward']}**")
                 st.markdown(
@@ -60,13 +60,12 @@ def display_terms(df):
             with col3:
                 st.write("")
             with col4:
-                if st.button("🧐 Ver más", key=f"btn_{row['nombre-termino']}"):
+                if st.button("🔎 Detalle", key=f"btn_{row['nombre-termino']}"):
                     st.session_state.selected_term = row['Id']
                     st.session_state.page = 'term_detail'
                     st.rerun()   
             with col5:
-                st.write("")
-    
+                st.write("")    
 
 def display_term_detail(term_id):
     try:
@@ -75,15 +74,22 @@ def display_term_detail(term_id):
         term_details = response.data[0] if response.data else None
 
         if term_details:
-            display_breadcrumbs('term_detail', term_name=term_details['nombre-termino'])
-            cola, colb = st.columns([5,1])
-            with cola:
-                st.header(f"{term_details['nombre-termino']}")
-            with colb:
+
+            colc,cold,colf= st.columns([10,1,1])
+            with colc:
+                display_breadcrumbs('term_detail', term_name=term_details['nombre-termino'])
+            with cold:
+                if st.button("🚀 Home"):
+                    st.session_state.page = 'term_explore'
+                    st.rerun()
+            with colf:
                 if st.button("✏️ Editar"):
                     st.session_state.page = 'term_edit'
                     st.rerun()
 
+           
+            st.header(f"📚 {term_details['nombre-termino']}")
+            
             # Mostrar información del término de negocio
             st.text_area("Concepto", value=term_details['concepto'], disabled=True)
             
@@ -98,29 +104,28 @@ def display_term_detail(term_id):
                 st.text_input("Proceso de Valor", value=term_details['proceso-valor'], disabled=True)
                 st.text_input("Master Data Steward", value=term_details['master-data-steward'], disabled=True)
 
-            # Mostrar datos de negocio asociados
-            st.subheader("Datos de Negocio Asociados")
+            # Mostrar datos de negocio asociados y botones para asociar datos existentes o agregar nuevos
+            col_header,col_associate, col_add = st.columns([9,1,1])
+            with col_header:
+                st.subheader("Datos de Negocio Asociados")
+            with col_associate:
+                if st.button("🔗 Asociar"):
+                    associate_existing_data(term_id)
+            with col_add:
+                if st.button("➕ Agregar"):
+                    add_new_data(term_id)
             associated_data = get_associated_data(term_id)
             if associated_data:
                 for data in associated_data:
-                    with st.expander(f"{display_status_indicator(data['estatus'])} {data['dato']}"):
+                    with st.expander(f"{display_status_indicator(data['estatus'])}📑**{data['dato']}**"):
                         st.write(f"Definición: {data['definicion']}")
                         st.write(f"Tipo de dato: {data['tipo_dato']}")
-                        if st.button("Ver detalle", key=f"detail_{data['id']}"):
+                        if st.button("🔎 Detalle", key=f"detail_{data['id']}"):
                             st.session_state.selected_data = data['id']
                             st.session_state.page = 'data_detail'
                             st.rerun()
             else:
                 st.write("No hay datos de negocio asociados.")
-
-            # Botones para asociar datos existentes o agregar nuevos
-            col_associate, col_add = st.columns(2)
-            with col_associate:
-                if st.button("Asociar dato existente"):
-                    associate_existing_data(term_id)
-            with col_add:
-                if st.button("Agregar dato nuevo"):
-                    add_new_data(term_id)
 
         else:
             st.write("No se encontraron detalles para este término.")
@@ -133,7 +138,7 @@ def edit_term_detail(term_id):
         response = supabase.table('termino-negocio').select('*').eq('Id', term_id).execute()
         term_details = response.data[0] if response.data else None
         if term_details:
-            st.header(f"Editar: {term_details['nombre-termino']}")
+            st.header(f"Editar: 📚{term_details['nombre-termino']}")
 
             # Crear formulario para edición
             with st.form(key='edit_term_form'):
@@ -151,7 +156,9 @@ def edit_term_detail(term_id):
                     new_data_steward = st.text_input("Master Data Steward", value=term_details['master-data-steward'])
 
                 # Botones de acción
-                col_cancel, col_save = st.columns(2)
+                col_space,col_cancel, col_save = st.columns([7,1,1])
+                with col_space:
+                    st.write("")
                 with col_cancel:
                     if st.form_submit_button("❌ Cancelar"):
                         st.session_state.page = 'term_detail'
@@ -180,11 +187,13 @@ def edit_term_detail(term_id):
 
 
 def display_associate_data_page(term_id):
-    st.header("Asociar Datos Existentes")
-    
-    if st.button("↩️ Regresar al Detalle del Término"):
-        st.session_state.page = 'term_detail'
-        st.rerun()
+    col1,col2 = st.columns([8,1])
+    with col1:
+        st.header("Asociar Datos Existentes")
+    with col2:
+        if st.button("↩️ Volver al TN"):
+            st.session_state.page = 'term_detail'
+            st.rerun()
     
     display_asociable_attributes(term_id)
 
@@ -194,24 +203,40 @@ def display_attribute_detail(data_id):
         data_details = response.data[0] if response.data else None
 
         if data_details:
-            # Obtener el nombre del término asociado
-            term_response = supabase.table('termino-dato').select('termino-id').eq('dato-id', data_id).execute()
-            if term_response.data:
-                term_id = term_response.data[0]['termino-id']
-                term_details = supabase.table('termino-negocio').select('nombre-termino').eq('Id', term_id).execute().data[0]
-                term_name = term_details['nombre-termino']
+            # Obtener el ID del término de la sesión
+            term_id = st.session_state.get('selected_term')
+
+            if term_id:
+                # Verificar si el término está asociado con este dato
+                term_data_response = supabase.table('termino-dato').select('*').eq('termino-id', term_id).eq('dato-id', data_id).execute()
+                
+                if term_data_response.data:
+                    # El término está asociado, obtener su nombre
+                    term_details = supabase.table('termino-negocio').select('nombre-termino').eq('Id', term_id).execute().data[0]
+                    term_name = term_details['nombre-termino']
+                else:
+                    # El término no está asociado, usar un valor por defecto
+                    term_name = "Término no asociado"
             else:
                 term_name = "Término Desconocido"
 
-            display_breadcrumbs('data_detail', term_name=term_name, data_name=data_details['dato'])
-            col1, col2 = st.columns([5,1])
-            with col1:
-                st.header(f"Detalle del Dato: {data_details['dato']}")
-            with col2:
+            # Mostrar las migas de pan con el término correcto
+            colc,cold,colf= st.columns([10,1.5,1])
+            with colc:
+                display_breadcrumbs('data_detail', term_name=term_name, data_name=data_details['dato'])
+            with cold:
+                if st.button("↩️ Volver al TN"):
+                    st.session_state.page = 'term_detail'
+                    st.rerun()
+            with colf:
                 if st.button("✏️ Editar"):
                     st.session_state.page = 'data_edit'
                     st.session_state.editing_data = data_details
                     st.rerun()
+            
+            
+            st.header(f"📑 {data_details['dato']}")
+            
 
             st.text_area("Definición", value=data_details['definicion'], disabled=True)
             st.text_input("Formato de entrada", value=data_details['formato_entrada'], disabled=True)
@@ -229,26 +254,23 @@ def display_attribute_detail(data_id):
             related_terms = get_related_terms(data_id)
             if related_terms:
                 for term in related_terms:
-                    with st.expander(f"{display_status_indicator(term['estatus'])} {term['nombre-termino']}"):
+                    with st.expander(f"{display_status_indicator(term['estatus'])}📚{term['nombre-termino']}"):
                         st.write(f"Concepto: {term['concepto']}")
                         st.write(f"Proceso de Valor: {term['proceso-valor']}")
-                        if st.button("Ver más", key=f"view_term_{term['Id']}"):
+                        if st.button("🔎 Detalle", key=f"view_term_{term['Id']}"):
                             st.session_state.selected_term = term['Id']
                             st.session_state.page = 'term_detail'
                             st.rerun()
             else:
                 st.write("No hay términos de negocio relacionados.")
 
-            if st.button("↩️ Regresar al Detalle del Término"):
-                st.session_state.page = 'term_detail'
-                st.rerun()
         else:
             st.write("No se encontraron detalles para este dato.")
     except Exception as e:
         st.error(f"Error al cargar los detalles del dato: {str(e)}")
 
 def edit_attribute_detail(data_details):
-    st.header(f"Editar Dato: {data_details['dato']}")
+    st.header(f"Editar: 📑{data_details['dato']}")
 
     with st.form("edit_data_form"):
         new_definicion = st.text_area("Definición", value=data_details['definicion'])
@@ -262,7 +284,9 @@ def edit_attribute_detail(data_details):
         new_estatus = st.selectbox("Estatus", ["captura", "aprobacion", "aprobado"], index=["captura", "aprobacion", "aprobado"].index(data_details['estatus']))
         new_comentario = st.text_area("Comentario", value=data_details['comentario'])
 
-        col1, col2 = st.columns(2)
+        col_space,col1, col2 = st.columns([7,1,1])
+        with col_space:
+            st.write("")
         with col1:
             if st.form_submit_button("❌ Cancelar"):
                 st.session_state.page = 'data_detail'
@@ -292,7 +316,27 @@ def edit_attribute_detail(data_details):
                     st.error(f"Error al guardar los cambios: {str(e)}")
 
 def display_add_new_attribute(term_id):
-    st.header("Agregar Nuevo Dato de Negocio")
+    # Estilo CSS para los breadcrumbs
+    subheader_style = """
+        <style>
+        .breadcrumbs {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 1em;
+        }
+        </style>
+    """
+    
+    # Combinar el estilo y el contenido de los breadcrumbs
+    subheader_with_style = f"""
+        {subheader_style}
+        <div class="breadcrumbs">Agregar nuevo dato de negocio</div>
+    """
+    
+    # Renderizar los breadcrumbs con estilo
+    st.markdown(subheader_with_style, unsafe_allow_html=True)
+
 
     with st.form("add_new_data_form"):
         new_dato = st.text_input("Dato")
@@ -307,7 +351,9 @@ def display_add_new_attribute(term_id):
         new_estatus = st.selectbox("Estatus", ["captura", "aprobacion", "aprobado"])
         new_comentario = st.text_area("Comentario")
 
-        col1, col2 = st.columns(2)
+        col0, col1, col2 = st.columns([7,1,1])
+        with col0:
+            st.write("")
         with col1:
             if st.form_submit_button("❌ Cancelar"):
                 st.session_state.page = 'term_detail'

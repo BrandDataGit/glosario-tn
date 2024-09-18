@@ -33,7 +33,27 @@ def get_associated_data(term_id):
     return []
 
 def display_asociable_attributes(term_id):
-    st.header("Datos Disponibles para Asociar")
+
+    # Estilo CSS para los breadcrumbs
+    subheader_style = """
+        <style>
+        .breadcrumbs {
+            font-size: 1em;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 1em;
+        }
+        </style>
+    """
+    
+    # Combinar el estilo y el contenido de los breadcrumbs
+    subheader_with_style = f"""
+        {subheader_style}
+        <div class="breadcrumbs">Datos disponibles:</div>
+    """
+    
+    # Renderizar los breadcrumbs con estilo
+    st.markdown(subheader_with_style, unsafe_allow_html=True)
 
     # Obtener datos ya asociados al término
     associated_response = supabase.table('termino-dato').select('dato-id').eq('termino-id', term_id).execute()
@@ -90,14 +110,11 @@ def get_related_terms(data_id):
 def display_breadcrumbs(current_page, term_name=None, data_name=None):
     breadcrumbs = []
     
-    if current_page in ['term_explore', 'term_detail', 'data_detail']:
-        breadcrumbs.append("Explorar")
-    
     if current_page in ['term_detail', 'data_detail'] and term_name:
-        breadcrumbs.append(term_name)
+        breadcrumbs.append(f"Nivel: Término de Negocio")#breadcrumbs.append(f"📚 {term_name}")
     
     if current_page == 'data_detail' and data_name:
-        breadcrumbs.append(data_name)
+        breadcrumbs.append(f"Dato de Negocio Asociado")#breadcrumbs.append(f"📑 {data_name}")
 
     breadcrumb_html = " &gt; ".join(breadcrumbs)
     
@@ -105,7 +122,7 @@ def display_breadcrumbs(current_page, term_name=None, data_name=None):
     breadcrumb_style = """
         <style>
         .breadcrumbs {
-            font-size: 1.5em;
+            font-size: 1.2em;
             font-weight: 600;
             color: #ffffff;
             margin-bottom: 1em;
