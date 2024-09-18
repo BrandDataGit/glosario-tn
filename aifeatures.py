@@ -3,6 +3,7 @@ import os
 from openai import OpenAI
 from supabase_config import supabase
 from utils import get_associated_data
+from datetime import datetime
 
 def extract_pdf_content(pdf_directory):
     content = ""
@@ -38,7 +39,7 @@ def ai_review(term_id, pdf_content):
             response = client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
-                    {"role": "system", "content": "Eres un experto en análisis de datos de negocio, gestión de información y gobierno de datos."},
+                    {"role": "system", "content": "Eres un analista de negocio experto en metadatos, gestión de información y gobierno de datos."},
                     {"role": "user", "content": prompt}
                 ]
             )
@@ -49,9 +50,9 @@ def ai_review(term_id, pdf_content):
     # Prepara el prompt para ChatGPT
     prompt = f"""
     Proporciona retroalimentación sobre el siguiente término de negocio y sus datos asociados,
-    considerando únicamente los lineamientos de gobierno de datos proporcionados:
+    considerando únicamente los lineamientos de gobierno de datos proporcionados y con respecto al contexto de negocio proporcionado:
 
-    Contexto de Negocio:
+    Contexto proporcionado:
     Capacidad de Negocio: {term_details['capacidad']}
     Sujeto: {term_details['sujeto']}
     Proceso de Valor: {term_details['proceso-valor']}
@@ -61,7 +62,7 @@ def ai_review(term_id, pdf_content):
     Concepto del Término de negocio: {term_details['concepto']}
     
 
-    Datos Asociados:
+    Datos de negocio asociados:
     """
 
     for data in associated_data:
@@ -76,7 +77,7 @@ def ai_review(term_id, pdf_content):
     {pdf_content[:1000]}  # Limitamos a 1000 caracteres para no exceder los límites de tokens
 
     
-    Genera retroalimentación y crítica constructiva, justifica cada inciso:
+    Genera retroalimentación, justifica cada inciso:
     1. Lineamientos a revisar en el nombre del Termino de Negocio que si se cumplen.
     2. Lineamientos a revisar en el nombre del Termino de Negocio que no se cumplen.
     3. Lineamientos a revisar en concepto de Términos de Negocio que si se cumplen.
@@ -85,6 +86,13 @@ def ai_review(term_id, pdf_content):
     
     """
     resultado = chat_con_gpt(prompt)
+
+    # Guardar el resultado y la fecha en Supabase
+    current_time = datetime.now().isoformat()
+    supabase.table('termino-negocio').update({
+        'ai_review': resultado,
+        'ai_review_date': current_time
+    }).eq('Id', term_id).execute()
 
     return resultado
 

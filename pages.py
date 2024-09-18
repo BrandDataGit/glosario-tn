@@ -7,6 +7,7 @@ get_related_terms, display_breadcrumbs)
 from supabase_config import supabase
 from itertools import zip_longest
 import os
+from datetime import datetime
 
 def display_terms(df):
     st.header("Explorar")
@@ -104,7 +105,7 @@ def display_term_detail(term_id):
         term_details = response.data[0] if response.data else None
 
         if term_details:
-            colc, cold, colf, colg, colh = st.columns([7,1,1,1.5,2])
+            colc, cold, colf, colg, colh = st.columns([8.5,1.2,1.2,1.2,1.2])
             with colc:
                 display_breadcrumbs('term_detail', term_name=term_details['nombre-termino'])
             with cold:
@@ -122,11 +123,11 @@ def display_term_detail(term_id):
                     st.session_state.editing_term = term_details
                     st.rerun()
             with colh:
-                if st.button("🤖 Revisión IA"):
-                    with st.spinner('La IA está analizando...'):
+                if st.button("✨ TecGPT"):
+                    with st.spinner('generando feedback...'):
                         pdf_content = extract_pdf_content('conocimiento')
                         ai_feedback = ai_review(term_id, pdf_content)
-                    st.session_state.ai_feedback = ai_feedback
+                    st.success("Análisis de IA completado y guardado.")
                     st.rerun()
 
             st.header(f"📚 {term_details['nombre-termino']}")
@@ -146,9 +147,12 @@ def display_term_detail(term_id):
                 st.text_input("Master Data Steward", value=term_details['master-data-steward'], disabled=True)
 
             # Mostrar la retroalimentación de la IA si está disponible
-            if 'ai_feedback' in st.session_state and st.session_state.ai_feedback:
-                st.subheader("Retroalimentación de la IA:")
-                st.text_area("", value=st.session_state.ai_feedback, height=300, disabled=True)
+            if term_details.get('ai_review'):
+                st.subheader("✨Retroalimentación de la IA:")
+                st.text_area("", value=term_details['ai_review'], height=300, disabled=True)
+                ai_review_date = datetime.fromisoformat(term_details['ai_review_date'])
+                formatted_date = ai_review_date.strftime("%d/%m/%Y")
+                st.write(f"AI feedback solicitado el: {formatted_date}")
 
             # Mostrar datos de negocio asociados y botones para asociar datos existentes o agregar nuevos
             col_header, col_associate, col_add = st.columns([9,1,1])
