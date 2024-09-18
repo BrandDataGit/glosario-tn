@@ -7,10 +7,8 @@ from supabase_config import supabase
 
 def display_terms(df):
     st.header("Explorar")
-
     # Mostrar número de resultados
     st.write(f"Mostrando {len(df)} términos de negocio")
-
     col1, col2 = st.columns(2)
     for i, (_, row) in enumerate(df.iterrows()):
         with (col1 if i % 2 == 0 else col2):
