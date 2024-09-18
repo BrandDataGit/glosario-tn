@@ -4,68 +4,88 @@ from utils import (display_status_indicator, get_associated_data,
 associate_existing_data, add_new_data, display_asociable_attributes, 
 get_related_terms, display_breadcrumbs)
 from supabase_config import supabase
+from itertools import zip_longest
 
 def display_terms(df):
     st.header("Explorar")
     # Mostrar número de resultados
     st.write(f"Mostrando {len(df)} términos de negocio")
+
+    # Ordenar el DataFrame por 'nombre-termino' en orden ascendente
+    df_sorted = df.sort_values(by='nombre-termino')
+
+    # Dividir los términos en dos listas para mantener el orden alfabético en ambas columnas
+    mid = len(df_sorted) // 2
+    left_column_data = df_sorted.iloc[:mid]
+    right_column_data = df_sorted.iloc[mid:]
+
+    # Crear dos columnas para mostrar los expanders
     col1, col2 = st.columns(2)
-    for i, (_, row) in enumerate(df.iterrows()):
-        with (col1 if i % 2 == 0 else col2):
-            with st.expander(f"{display_status_indicator(row['estatus'])} 📚 **{row['nombre-termino']}**"):
-                st.write(f"**Concepto:**  \n" f"{row['concepto']}")
-                #st.write(f"Master Data Steward: **{row['Master Data Steward']}**")
-                st.markdown(
-                f"""
-                <div style='display: flex;'>
-                    <div style='width: 150px;'>Master Data Steward:</div>
-                    <div style='margin-left: 40px;'><strong>{row['master-data-steward']}</strong></div>
-                </div>
-                """, 
-                unsafe_allow_html=True
-            )
-                st.write(f"  \n")
-                st.markdown(
-                f"""
-                <div style='display: flex;'>
-                    <div style='width: 150px;'>Sujeto:</div>
-                    <div style='margin-left: 40px;'><strong>{row['sujeto']}</strong></div>
-                </div>
-                """, 
-                unsafe_allow_html=True
-            )
-                st.write(f"  \n")
-                st.markdown(
-                f"""
-                <div style='display: flex;'>
-                    <div style='width: 150px;'>Capacidad:</div>
-                    <div style='margin-left: 40px;'><strong>{row['capacidad']}</strong></div>
-                </div>
-                """, 
-                unsafe_allow_html=True
-            )
-                st.write(f"  \n")
-                st.markdown(
-                f"""
-                <div style='display: flex;'>
-                    <div style='width: 150px;'>Proceso de Valor:</div>
-                    <div style='margin-left: 40px;'><strong>{row['proceso-valor']}</strong></div>
-                </div>
-                """, 
-                unsafe_allow_html=True
-            )
-                st.write(f"   \n")
-                st.write(f"   \n")
-                col3,col4,col5 = st.columns([1,2,1])
-            with col3:
-                st.write("")
-            with col4:
-                if st.button("🔎 Detalle", key=f"btn_{row['nombre-termino']}"):
-                    st.session_state.selected_term = row['Id']
-                    st.session_state.page = 'term_detail'
-                    st.rerun()   
-            with col5:
-                st.write("")    
+
+    # Iterar sobre los términos y mostrarlos en las columnas
+    for (_, left_row), (_, right_row) in zip_longest(left_column_data.iterrows(), right_column_data.iterrows(), fillvalue=(None, pd.Series())):
+        with col1:
+            if not left_row.empty:
+                display_term_expander(left_row)
+        
+        with col2:
+            if not right_row.empty:
+                display_term_expander(right_row)
+
+def display_term_expander(row):
+    with st.expander(f"{display_status_indicator(row['estatus'])} 📚 **{row['nombre-termino']}**"):
+        st.write(f"**Concepto:**  \n" f"{row['concepto']}")
+        st.markdown(
+            f"""
+            <div style='display: flex;'>
+                <div style='width: 150px;'>Master Data Steward:</div>
+                <div style='margin-left: 40px;'><strong>{row['master-data-steward']}</strong></div>
+            </div>
+            """, 
+            unsafe_allow_html=True
+        )
+        st.write(f"  \n")
+        st.markdown(
+            f"""
+            <div style='display: flex;'>
+                <div style='width: 150px;'>Sujeto:</div>
+                <div style='margin-left: 40px;'><strong>{row['sujeto']}</strong></div>
+            </div>
+            """, 
+            unsafe_allow_html=True
+        )
+        st.write(f"  \n")
+        st.markdown(
+            f"""
+            <div style='display: flex;'>
+                <div style='width: 150px;'>Capacidad:</div>
+                <div style='margin-left: 40px;'><strong>{row['capacidad']}</strong></div>
+            </div>
+            """, 
+            unsafe_allow_html=True
+        )
+        st.write(f"  \n")
+        st.markdown(
+            f"""
+            <div style='display: flex;'>
+                <div style='width: 150px;'>Proceso de Valor:</div>
+                <div style='margin-left: 40px;'><strong>{row['proceso-valor']}</strong></div>
+            </div>
+            """, 
+            unsafe_allow_html=True
+        )
+        st.write(f"   \n")
+        st.write(f"   \n")
+        col3, col4, col5 = st.columns([1,2,1])
+        with col3:
+            st.write("")
+        with col4:
+            if st.button("🔎 Detalle", key=f"btn_{row['nombre-termino']}"):
+                st.session_state.selected_term = row['Id']
+                st.session_state.page = 'term_detail'
+                st.rerun()   
+        with col5:
+            st.write("")  
 
 def display_term_detail(term_id):
     try:
@@ -74,8 +94,7 @@ def display_term_detail(term_id):
         term_details = response.data[0] if response.data else None
 
         if term_details:
-
-            colc,cold,colf= st.columns([10,1,1])
+            colc, cold, colf = st.columns([10,1,1])
             with colc:
                 display_breadcrumbs('term_detail', term_name=term_details['nombre-termino'])
             with cold:
@@ -87,7 +106,6 @@ def display_term_detail(term_id):
                     st.session_state.page = 'term_edit'
                     st.rerun()
 
-           
             st.header(f"📚 {term_details['nombre-termino']}")
             
             # Mostrar información del término de negocio
@@ -105,7 +123,7 @@ def display_term_detail(term_id):
                 st.text_input("Master Data Steward", value=term_details['master-data-steward'], disabled=True)
 
             # Mostrar datos de negocio asociados y botones para asociar datos existentes o agregar nuevos
-            col_header,col_associate, col_add = st.columns([9,1,1])
+            col_header, col_associate, col_add = st.columns([9,1,1])
             with col_header:
                 st.subheader("Datos de Negocio Asociados")
             with col_associate:
@@ -114,16 +132,42 @@ def display_term_detail(term_id):
             with col_add:
                 if st.button("➕ Agregar"):
                     add_new_data(term_id)
+            
             associated_data = get_associated_data(term_id)
             if associated_data:
-                for data in associated_data:
-                    with st.expander(f"{display_status_indicator(data['estatus'])}📑**{data['dato']}**"):
-                        st.write(f"Definición: {data['definicion']}")
-                        st.write(f"Tipo de dato: {data['tipo_dato']}")
-                        if st.button("🔎 Detalle", key=f"detail_{data['id']}"):
-                            st.session_state.selected_data = data['id']
-                            st.session_state.page = 'data_detail'
-                            st.rerun()
+                # Ordenar los datos asociados por el campo 'dato' en orden ascendente
+                associated_data.sort(key=lambda x: x['dato'])
+                
+                # Dividir los datos en dos listas para mantener el orden alfabético en ambas columnas
+                mid = len(associated_data) // 2
+                left_column_data = associated_data[:mid]
+                right_column_data = associated_data[mid:]
+                
+                # Crear dos columnas para mostrar los expanders
+                col1, col2 = st.columns(2)
+                
+                # Iterar sobre los datos asociados y mostrarlos en las columnas
+                for left_data, right_data in zip_longest(left_column_data, right_column_data):
+                    with col1:
+                        if right_data:
+                            with st.expander(f"{display_status_indicator(right_data['estatus'])}📑**{right_data['dato']}**"):
+                                st.write(f"Definición: {right_data['definicion']}")
+                                st.write(f"Tipo de dato: {right_data['tipo_dato']}")
+                                if st.button("🔎 Detalle", key=f"detail_{right_data['id']}"):
+                                    st.session_state.selected_data = right_data['id']
+                                    st.session_state.page = 'data_detail'
+                                    st.rerun()
+                    
+                    with col2:
+                        if left_data:
+                            with st.expander(f"{display_status_indicator(left_data['estatus'])}📑**{left_data['dato']}**"):
+                                st.write(f"Definición: {left_data['definicion']}")
+                                st.write(f"Tipo de dato: {left_data['tipo_dato']}")
+                                if st.button("🔎 Detalle", key=f"detail_{left_data['id']}"):
+                                    st.session_state.selected_data = left_data['id']
+                                    st.session_state.page = 'data_detail'
+                                    st.rerun()
+                        
             else:
                 st.write("No hay datos de negocio asociados.")
 
@@ -221,7 +265,7 @@ def display_attribute_detail(data_id):
                 term_name = "Término Desconocido"
 
             # Mostrar las migas de pan con el término correcto
-            colc,cold,colf= st.columns([10,1.5,1])
+            colc, cold, colf = st.columns([10, 1.5, 1])
             with colc:
                 display_breadcrumbs('data_detail', term_name=term_name, data_name=data_details['dato'])
             with cold:
@@ -234,9 +278,7 @@ def display_attribute_detail(data_id):
                     st.session_state.editing_data = data_details
                     st.rerun()
             
-            
             st.header(f"📑 {data_details['dato']}")
-            
 
             st.text_area("Definición", value=data_details['definicion'], disabled=True)
             st.text_input("Formato de entrada", value=data_details['formato_entrada'], disabled=True)
@@ -253,7 +295,19 @@ def display_attribute_detail(data_id):
             st.subheader("Términos de Negocio Relacionados")
             related_terms = get_related_terms(data_id)
             if related_terms:
-                for term in related_terms:
+                # Ordenar los términos relacionados alfabéticamente por nombre-termino
+                related_terms.sort(key=lambda x: x['nombre-termino'])
+                
+                # Dividir los términos en dos listas para mantener el orden alfabético en ambas columnas
+                mid = len(related_terms) // 2
+                left_column_terms = related_terms[:mid]
+                right_column_terms = related_terms[mid:]
+                
+                # Crear dos columnas para mostrar los expanders
+                col1, col2 = st.columns(2)
+                
+                # Función para mostrar un término en un expander
+                def display_term(term):
                     with st.expander(f"{display_status_indicator(term['estatus'])}📚{term['nombre-termino']}"):
                         st.write(f"Concepto: {term['concepto']}")
                         st.write(f"Proceso de Valor: {term['proceso-valor']}")
@@ -261,6 +315,15 @@ def display_attribute_detail(data_id):
                             st.session_state.selected_term = term['Id']
                             st.session_state.page = 'term_detail'
                             st.rerun()
+                
+                # Mostrar términos en las columnas
+                with col1:
+                    for term in right_column_terms:
+                        display_term(term)
+                
+                with col2:
+                    for term in left_column_terms:
+                        display_term(term)
             else:
                 st.write("No hay términos de negocio relacionados.")
 

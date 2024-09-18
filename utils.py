@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from supabase_config import supabase
+from itertools import zip_longest
 
 def load_termino_negocio_data():
     try:
@@ -33,7 +34,6 @@ def get_associated_data(term_id):
     return []
 
 def display_asociable_attributes(term_id):
-
     # Estilo CSS para los breadcrumbs
     subheader_style = """
         <style>
@@ -67,15 +67,45 @@ def display_asociable_attributes(term_id):
         st.write("No hay datos disponibles para asociar.")
         return
 
+    # Ordenar los datos disponibles por 'dato' en orden ascendente
+    available_data.sort(key=lambda x: x['dato'])
+
+    # Agregar un filtro de búsqueda
+    search_term = st.text_input("Buscar por nombre del dato:")
+    filtered_data = [data for data in available_data if search_term.lower() in data['dato'].lower()]
+
+    # Crear dos columnas para mostrar los expanders
+    col1, col2 = st.columns(2)
+
+    # Dividir los datos filtrados en dos listas para mantener el orden alfabético en ambas columnas
+    mid = len(filtered_data) // 2
+    left_column_data = filtered_data[:mid]
+    right_column_data = filtered_data[mid:]
+
     # Mostrar datos disponibles en tarjetas
-    for data in available_data:
-        with st.expander(f"{data['dato']}"):
-            st.write(f"Definición: {data['definicion']}")
-            st.write(f"Tipo de dato: {data['tipo_dato']}")
-            if st.button("Asociar", key=f"associate_{data['id']}"):
-                associate_data(term_id, data['id'])
-                st.success(f"Dato '{data['dato']}' asociado exitosamente.")
-                st.rerun()
+    for left_data, right_data in zip_longest(left_column_data, right_column_data):
+        with col1:
+            if left_data:
+                with st.expander(f"{left_data['dato']}"):
+                    st.write(f"Definición: {left_data['definicion']}")
+                    st.write(f"Tipo de dato: {left_data['tipo_dato']}")
+                    if st.button("Asociar", key=f"associate_{left_data['id']}"):
+                        associate_data(term_id, left_data['id'])
+                        st.success(f"Dato '{left_data['dato']}' asociado exitosamente.")
+                        st.rerun()
+        
+        with col2:
+            if right_data:
+                with st.expander(f"{right_data['dato']}"):
+                    st.write(f"Definición: {right_data['definicion']}")
+                    st.write(f"Tipo de dato: {right_data['tipo_dato']}")
+                    if st.button("Asociar", key=f"associate_{right_data['id']}"):
+                        associate_data(term_id, right_data['id'])
+                        st.success(f"Dato '{right_data['dato']}' asociado exitosamente.")
+                        st.rerun()
+
+    if not filtered_data:
+        st.write("No se encontraron datos que coincidan con la búsqueda.")
 
 def associate_data(term_id, data_id):
     # Crear la relación en la tabla termino-dato
