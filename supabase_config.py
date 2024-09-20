@@ -16,7 +16,13 @@ if not url or not key:
 # Create Supabase client
 supabase: Client = create_client(url, key)
 
+def check_user_exists(email: str):
+    response = supabase.from_('user_profile').select('email').eq('email', email).execute()
+    return len(response.data) > 0
+
 def sign_up(email: str, password: str):
+    if check_user_exists(email):
+        return {"error": "El usuario ya existe"}
     return supabase.auth.sign_up({"email": email, "password": password})
 
 def sign_in(email: str, password: str):
@@ -27,3 +33,11 @@ def sign_out():
 
 def get_user():
     return supabase.auth.get_user()
+
+def insert_user_profile(email: str):
+    try:
+        response = supabase.table('user_profile').insert({"email": email}).execute()
+        return len(response.data) > 0
+    except Exception as e:
+        print(f"Error al insertar en user_profile: {str(e)}")
+        return False

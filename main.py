@@ -1,5 +1,5 @@
 import streamlit as st
-from supabase_config import sign_up, sign_in, sign_out, get_user
+from supabase_config import sign_up, sign_in, sign_out, get_user, check_user_exists, insert_user_profile
 import pandas as pd
 from utils import load_termino_negocio_data
 from pages import (display_terms, display_term_detail, edit_term_detail, 
@@ -14,26 +14,47 @@ def login():
     st.title("Iniciar Sesión")
     email = st.text_input("Email", key="login_email")
     password = st.text_input("Contraseña", type="password", key="login_password")
-    if st.button("Iniciar Sesión"):
-        response = sign_in(email, password)
-        if response.user:
-            st.session_state.user = response.user
-            st.success("Inicio de sesión exitoso!")
-            st.rerun()
-        else:
-            st.error("Error en el inicio de sesión. Por favor, verifica tus credenciales.")
+    if st.button("Iniciar Sesión", key="login_button"):
+        # Primero, verificar si el usuario existe
+        if not check_user_exists(email):
+            st.error("Usuario no registrado.")
+            return
+        
+        # Si el usuario existe, intentar iniciar sesión
+        try:
+            response = sign_in(email, password)
+            if response.user:
+                st.session_state.user = response.user
+                st.success("Inicio de sesión exitoso!")
+                st.rerun()
+        except Exception as e:
+            error_message = str(e)
+            if "Invalid login credentials" in error_message:
+                st.error("Usuario o contraseña incorrectos.")
+            else:
+                st.error(f"Error en el inicio de sesión: {error_message}")
+
 
 def signup():
     st.title("Registrarse")
     email = st.text_input("Email", key="signup_email")
     password = st.text_input("Contraseña", type="password", key="signup_password")
-    if st.button("Registrarse"):
-        response = sign_up(email, password)
-        if response.user:
-            st.success("Registro exitoso! Por favor, inicia sesión.")
-            st.rerun()
+    if st.button("Registrarse", key="signup_button"):
+        if check_user_exists(email):
+            st.error("Este email ya está registrado. Por favor, usa otro email o inicia sesión.")
         else:
-            st.error("Error en el registro. Por favor, intenta de nuevo.")
+            response = sign_up(email, password)
+            if "error" in response:
+                st.error(response["error"])
+            elif response.user:
+                # El registro fue exitoso, ahora insertamos el email en user-profile
+                insert_result = insert_user_profile(email)
+                if insert_result:
+                    st.success("Registro exitoso! Por favor, confirma tu correo electrónico.")
+                else:
+                    st.warning("Registro exitoso, pero hubo un problema al crear el perfil de usuario. Por favor, contacta al soporte.")
+            else:
+                st.error("Error en el registro. Por favor, intenta de nuevo.")
 
 def main():
     if "user" not in st.session_state:
