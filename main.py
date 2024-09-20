@@ -2,8 +2,10 @@ import streamlit as st
 import pandas as pd
 from utils import load_termino_negocio_data
 from pages import (display_terms, display_term_detail, edit_term_detail, 
-display_associate_data_page, display_attribute_detail, 
-edit_attribute_detail, display_add_new_attribute, edit_term_status, edit_attribute_status)
+                   display_associate_data_page, display_attribute_detail, 
+                   edit_attribute_detail, display_add_new_attribute, 
+                   edit_term_status, edit_attribute_status, add_new_term,
+                   display_associate_existing_term, display_add_new_child_term)
 
 st.set_page_config(page_title="Glosario de Términos de Negocio", layout="wide")
 
@@ -17,6 +19,8 @@ def main():
         st.session_state.selected_term = None
     if 'selected_attribute' not in st.session_state:
         st.session_state.selected_attribute = None
+    if 'parent_term_id' not in st.session_state:
+        st.session_state.parent_term_id = None
 
     # Cargar datos
     tn_df = load_termino_negocio_data()
@@ -67,6 +71,12 @@ def main():
             edit_term_status(st.session_state.editing_term)
         elif st.session_state.page == 'edit_attribute_status':
             edit_attribute_status(st.session_state.editing_attribute)
+        elif st.session_state.page == 'add_new_term':
+            add_new_term()
+        elif st.session_state.page == 'associate_term':
+            display_associate_existing_term(st.session_state.parent_term_id)
+        elif st.session_state.page == 'add_new_child_term':
+            display_add_new_child_term(st.session_state.parent_term_id)
 
 if __name__ == "__main__":
     main()

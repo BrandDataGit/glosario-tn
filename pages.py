@@ -3,14 +3,23 @@ import pandas as pd
 from aifeatures import extract_pdf_content, ai_review, ai_attribute_review
 from utils import (display_status_indicator, get_associated_data, 
 associate_existing_data, add_new_data, display_asociable_attributes, 
-get_related_terms, display_breadcrumbs)
+get_related_terms, display_breadcrumbs,add_new_child_term, get_child_terms,
+associate_existing_term, display_associable_terms, normalize_string, is_valid_name)
 from supabase_config import supabase
 from itertools import zip_longest
 import os
 from datetime import datetime
 
 def display_terms(df):
-    st.header("Explorar")
+    col1, col2, col3 = st.columns([6, 1, 1.5])
+    with col1:
+        st.header("Explorar")
+    with col2:
+        st.write("")
+    with col3:
+        if st.button("➕ Agregar"):
+            st.session_state.page = 'add_new_term'
+            st.rerun()
 
     # Añadir filtro de búsqueda por nombre del término
     term_filter = st.text_input("Buscar por nombre del término")
@@ -154,15 +163,57 @@ def display_term_detail(term_id):
                 formatted_date = ai_review_date.strftime("%d/%m/%Y")
                 st.write(f"AI feedback solicitado el: {formatted_date}")
 
+             # Nueva sección: Términos de Negocio Hijo Asociados
+            st.subheader("Términos de Negocio Hijo Asociados")
+            col_header, col_associate, col_add = st.columns([8,1.5,1.5])
+            with col_associate:
+                if st.button("🔗 Asociar TN"):
+                    associate_existing_term(term_id)
+            with col_add:
+                if st.button("➕ Agregar TN"):
+                    add_new_child_term(term_id)
+            
+            child_terms = get_child_terms(term_id)
+            if child_terms:
+                # Ordenar los términos hijo por nombre
+                child_terms.sort(key=lambda x: x['nombre-termino'])
+                
+                # Dividir los términos en dos columnas
+                mid = len(child_terms) // 2
+                left_column_terms = child_terms[:mid]
+                right_column_terms = child_terms[mid:]
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    for term in left_column_terms:
+                        with st.expander(f"{display_status_indicator(term['estatus'])}📚{term['nombre-termino']}"):
+                            st.write(f"Concepto: {term['concepto']}")
+                            if st.button("🔎 Detalle", key=f"view_child_term_{term['Id']}"):
+                                st.session_state.selected_term = term['Id']
+                                st.session_state.page = 'term_detail'
+                                st.rerun()
+                
+                with col2:
+                    for term in right_column_terms:
+                        with st.expander(f"{display_status_indicator(term['estatus'])}📚{term['nombre-termino']}"):
+                            st.write(f"Concepto: {term['concepto']}")
+                            if st.button("🔎 Detalle", key=f"view_child_term_{term['Id']}"):
+                                st.session_state.selected_term = term['Id']
+                                st.session_state.page = 'term_detail'
+                                st.rerun()
+            else:
+                st.write("No hay términos de Negocio hijo asociados.")
+
             # Mostrar datos de negocio asociados y botones para asociar datos existentes o agregar nuevos
-            col_header, col_associate, col_add = st.columns([9,1,1])
+            col_header, col_associate, col_add = st.columns([8,1.5,1.5])
             with col_header:
                 st.subheader("Datos de Negocio Asociados")
             with col_associate:
-                if st.button("🔗 Asociar"):
+                if st.button("🔗 Asociar Dato"):
                     associate_existing_data(term_id)
             with col_add:
-                if st.button("➕ Agregar"):
+                if st.button("➕ Agregar Dato"):
                     add_new_data(term_id)
             
             associated_data = get_associated_data(term_id)
@@ -470,39 +521,60 @@ def display_add_new_attribute(term_id):
         with col2:
             if st.form_submit_button("💾 Guardar"):
                 try:
-                    # Insertar nuevo dato en la tabla dato-negocio
-                    data_response = supabase.table('dato-negocio').insert({
-                        'dato': new_dato,
-                        'definicion': new_definicion,
-                        'formato_entrada': new_formato_entrada,
-                        'valores_permitidos': new_valores_permitidos,
-                        'valor_predeterminado': new_valor_predeterminado,
-                        'dato_obligatorio': new_dato_obligatorio,
-                        'regla_negocio': new_regla_negocio,
-                        'tipo_dato': new_tipo_dato,
-                        'uso': new_uso,
-                        'estatus': new_estatus,
-                        'comentario': new_comentario
-                    }).execute()
+                    # Validar el formato del nombre del dato
+                    if not is_valid_name(new_dato):
+                        st.error("El nombre del dato solo puede contener letras (con o sin acentos), números y espacios.")
+                        return
 
-                    if data_response.data:
-                        new_data_id = data_response.data[0]['id']
-                        
-                        # Crear relación en la tabla termino-dato
-                        relation_response = supabase.table('termino-dato').insert({
-                            'termino-id': term_id,
-                            'dato-id': new_data_id,
-                            'estatus': 'activo'
+                    # Normalizar el nuevo nombre del dato (quitar acentos y convertir a minúsculas) solo para comparación
+                    new_dato_normalized = normalize_string(new_dato)
+
+                    # Verificar si el dato ya existe en dato-negocio (insensible a mayúsculas y acentos)
+                    existing_data = supabase.table('dato-negocio').select('id', 'dato').execute()
+                    existing_data_names = [normalize_string(data['dato']) for data in existing_data.data]
+
+                    # Verificar si el nombre existe en la columna 'nombre-termino' de termino-negocio (insensible a mayúsculas y acentos)
+                    existing_term = supabase.table('termino-negocio').select('Id', 'nombre-termino').execute()
+                    existing_term_names = [normalize_string(term['nombre-termino']) for term in existing_term.data]
+
+                    if new_dato_normalized in existing_data_names:
+                        st.error(f"El dato '{new_dato}' ya existe como un dato de negocio. Por favor, elige un nombre diferente.")
+                    elif new_dato_normalized in existing_term_names:
+                        st.error(f"El nombre '{new_dato}' ya existe como un término de negocio. Por favor, elige un nombre diferente.")
+                    else:
+                        # Insertar nuevo dato en la tabla dato-negocio
+                        data_response = supabase.table('dato-negocio').insert({
+                            'dato': new_dato,  # Usar el nombre original con acentos
+                            'definicion': new_definicion,
+                            'formato_entrada': new_formato_entrada,
+                            'valores_permitidos': new_valores_permitidos,
+                            'valor_predeterminado': new_valor_predeterminado,
+                            'dato_obligatorio': new_dato_obligatorio,
+                            'regla_negocio': new_regla_negocio,
+                            'tipo_dato': new_tipo_dato,
+                            'uso': new_uso,
+                            'estatus': new_estatus,
+                            'comentario': new_comentario
                         }).execute()
 
-                        if relation_response.data:
-                            st.success("Nuevo dato agregado y asociado exitosamente.")
-                            st.session_state.page = 'term_detail'
-                            st.rerun()
+                        if data_response.data:
+                            new_data_id = data_response.data[0]['id']
+                            
+                            # Crear relación en la tabla termino-dato
+                            relation_response = supabase.table('termino-dato').insert({
+                                'termino-id': term_id,
+                                'dato-id': new_data_id,
+                                'estatus': 'activo'
+                            }).execute()
+
+                            if relation_response.data:
+                                st.success("Nuevo dato agregado y asociado exitosamente.")
+                                st.session_state.page = 'term_detail'
+                                st.rerun()
+                            else:
+                                st.error("Error al crear la relación entre el término y el dato.")
                         else:
-                            st.error("Error al crear la relación entre el término y el dato.")
-                    else:
-                        st.error("Error al agregar el nuevo dato.")
+                            st.error("Error al agregar el nuevo dato.")
                 except Exception as e:
                     st.error(f"Error al procesar la solicitud: {str(e)}")
 
@@ -565,3 +637,172 @@ def edit_attribute_status(data_details):
                     st.rerun()
                 except Exception as e:
                     st.error(f"Error al guardar los cambios: {str(e)}")
+
+def add_new_term():
+    st.header("Agregar Nuevo Término de Negocio")
+
+    with st.form("add_new_term_form"):
+        new_nombre = st.text_input("Nombre del término")
+        new_concepto = st.text_area("Concepto")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            new_capacidad = st.text_input("Capacidad")
+            new_sujeto = st.text_input("Sujeto")
+        
+        with col2:
+            new_proceso_valor = st.text_input("Proceso de Valor")
+            new_data_steward = st.text_input("Master Data Steward")
+
+        new_estatus = st.selectbox("Estatus", ["captura", "por aprobar", "aprobado"])
+
+        col_space, col_cancel, col_save = st.columns([7,1,1])
+        with col_space:
+            st.write("")
+        with col_cancel:
+            if st.form_submit_button("❌ Cancelar"):
+                st.session_state.page = 'term_explore'
+                st.rerun()
+        with col_save:
+            if st.form_submit_button("💾 Guardar"):
+                try:
+                    # Validar el formato del nombre
+                    if not is_valid_name(new_nombre):
+                        st.error("El nombre del término solo puede contener letras (con o sin acentos), números y espacios.")
+                        return
+
+                    # Normalizar el nuevo nombre (quitar acentos y convertir a minúsculas)
+                    new_nombre_normalized = normalize_string(new_nombre)
+
+                    # Verificar si el término ya existe en termino-negocio (insensible a mayúsculas y acentos)
+                    existing_term = supabase.table('termino-negocio').select('Id', 'nombre-termino').execute()
+                    existing_term_names = [normalize_string(term['nombre-termino']) for term in existing_term.data]
+                    
+                    # Verificar si el nombre existe en la columna 'dato' de dato-negocio (insensible a mayúsculas y acentos)
+                    existing_data = supabase.table('dato-negocio').select('id', 'dato').execute()
+                    existing_data_names = [normalize_string(data['dato']) for data in existing_data.data]
+
+                    if new_nombre_normalized in existing_term_names:
+                        st.error(f"El término '{new_nombre}' ya existe como un término de negocio. Por favor, elige un nombre diferente.")
+                    elif new_nombre_normalized in existing_data_names:
+                        st.error(f"El nombre '{new_nombre}' ya existe como un dato de negocio. Por favor, elige un nombre diferente.")
+                    else:
+                        new_term_data = {
+                            'nombre-termino': new_nombre,
+                            'concepto': new_concepto,
+                            'capacidad': new_capacidad,
+                            'sujeto': new_sujeto,
+                            'proceso-valor': new_proceso_valor,
+                            'master-data-steward': new_data_steward,
+                            'estatus': new_estatus
+                        }
+                        
+                        response = supabase.table('termino-negocio').insert(new_term_data).execute()
+                        
+                        if response.data:
+                            st.success("Nuevo término de negocio agregado exitosamente.")
+                            st.session_state.page = 'term_explore'
+                            st.rerun()
+                        else:
+                            st.error("Error al agregar el nuevo término de negocio.")
+                except Exception as e:
+                    st.error(f"Error al procesar la solicitud: {str(e)}")
+                
+
+def display_associate_existing_term(parent_term_id):
+    st.header("Asociar Términos de Negocio Existentes")
+    
+    col1, col2 = st.columns([8,1])
+    with col1:
+        st.write("")
+    with col2:
+        if st.button("↩️ Volver al TN"):
+            st.session_state.page = 'term_detail'
+            st.rerun()
+    
+    display_associable_terms(parent_term_id)
+
+def display_add_new_child_term(parent_term_id):
+    st.header("Agregar Nuevo Término de Negocio Hijo")
+
+    with st.form("add_new_child_term_form"):
+        new_nombre = st.text_input("Nombre del término")
+        new_concepto = st.text_area("Concepto")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            new_capacidad = st.text_input("Capacidad")
+            new_sujeto = st.text_input("Sujeto")
+        
+        with col2:
+            new_proceso_valor = st.text_input("Proceso de Valor")
+            new_data_steward = st.text_input("Master Data Steward")
+
+        new_estatus = st.selectbox("Estatus", ["captura", "por aprobar", "aprobado"])
+
+        col_space, col_cancel, col_save = st.columns([7,1,1])
+        with col_space:
+            st.write("")
+        with col_cancel:
+            if st.form_submit_button("❌ Cancelar"):
+                st.session_state.page = 'term_detail'
+                st.rerun()
+        with col_save:
+            if st.form_submit_button("💾 Guardar"):
+                try:
+                    # Validar el formato del nombre
+                    if not is_valid_name(new_nombre):
+                        st.error("El nombre del término solo puede contener letras (con o sin acentos), números y espacios.")
+                        return
+
+                    # Normalizar el nuevo nombre (quitar acentos y convertir a minúsculas)
+                    new_nombre_normalized = normalize_string(new_nombre)
+
+                    # Verificar si el término ya existe en termino-negocio (insensible a mayúsculas y acentos)
+                    existing_term = supabase.table('termino-negocio').select('Id', 'nombre-termino').execute()
+                    existing_term_names = [normalize_string(term['nombre-termino']) for term in existing_term.data]
+                    
+                    # Verificar si el nombre existe en la columna 'dato' de dato-negocio (insensible a mayúsculas y acentos)
+                    existing_data = supabase.table('dato-negocio').select('id', 'dato').execute()
+                    existing_data_names = [normalize_string(data['dato']) for data in existing_data.data]
+
+                    if new_nombre_normalized in existing_term_names:
+                        st.error(f"El término '{new_nombre}' ya existe como un término de negocio. Por favor, elige un nombre diferente.")
+                    elif new_nombre_normalized in existing_data_names:
+                        st.error(f"El nombre '{new_nombre}' ya existe como un dato de negocio. Por favor, elige un nombre diferente.")
+                    else:
+                        new_term_data = {
+                            'nombre-termino': new_nombre,
+                            'concepto': new_concepto,
+                            'capacidad': new_capacidad,
+                            'sujeto': new_sujeto,
+                            'proceso-valor': new_proceso_valor,
+                            'master-data-steward': new_data_steward,
+                            'estatus': new_estatus
+                        }
+                        
+                        response = supabase.table('termino-negocio').insert(new_term_data).execute()
+                        
+                        if response.data:
+                            new_term_id = response.data[0]['Id']
+                            
+                            # Crear relación en la tabla termino-termino
+                            relation_response = supabase.table('termino-termino').insert({
+                                'termino-padre-id': parent_term_id,
+                                'termino-hijo-id': new_term_id,
+                                'estatus': 'captura',
+                                'created_at': 'now()'                               
+                            }).execute()
+
+                            if relation_response.data:
+                                st.success("Nuevo término de negocio hijo agregado y asociado exitosamente.")
+                                st.session_state.page = 'term_detail'
+                                st.rerun()
+                            else:
+                                st.error("Error al crear la relación entre el término padre y el hijo.")
+                        else:
+                            st.error("Error al agregar el nuevo término de negocio hijo.")
+                except Exception as e:
+                    st.error(f"Error al procesar la solicitud: {str(e)}")

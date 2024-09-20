@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 from supabase_config import supabase
 from itertools import zip_longest
+import unidecode
+import re
 
 def load_termino_negocio_data():
     try:
@@ -117,6 +119,7 @@ def associate_data(term_id, data_id):
         #'user_create': st.session_state.get('user_id', 'unknown')
     }).execute()
 
+
 def associate_existing_data(term_id):
     st.session_state.page = 'associate_data'
     st.session_state.selected_term = term_id
@@ -168,3 +171,93 @@ def display_breadcrumbs(current_page, term_name=None, data_name=None):
     
     # Renderizar los breadcrumbs con estilo
     st.markdown(breadcrumbs_with_style, unsafe_allow_html=True)
+
+
+def get_child_terms(term_id):
+    # Obtener los términos hijo asociados al término padre
+    response = supabase.table('termino-termino').select('termino-hijo-id').eq('termino-padre-id', term_id).execute()
+    child_term_ids = [item['termino-hijo-id'] for item in response.data]
+    
+    if child_term_ids:
+        response = supabase.table('termino-negocio').select('*').in_('Id', child_term_ids).execute()
+        return response.data
+    return []
+
+def associate_existing_term(parent_term_id):
+    st.session_state.page = 'associate_term'
+    st.session_state.parent_term_id = parent_term_id
+    st.rerun()
+
+
+def add_new_child_term(parent_term_id):
+    st.session_state.page = 'add_new_child_term'
+    st.session_state.parent_term_id = parent_term_id
+    st.rerun()
+    
+def associate_term(parent_term_id, child_term_id):
+    # Crear la relación en la tabla termino-termino
+    supabase.table('termino-termino').insert({
+        'termino-padre-id': parent_term_id,
+        'termino-hijo-id': child_term_id,
+        'estatus': 'captura',
+        'created_at': 'now()'
+    }).execute()
+
+def display_associable_terms(parent_term_id):
+    # Obtener términos ya asociados al término padre
+    associated_response = supabase.table('termino-termino').select('termino-hijo-id').eq('termino-padre-id', parent_term_id).execute()
+    associated_term_ids = [item['termino-hijo-id'] for item in associated_response.data]
+
+    # Obtener todos los términos de negocio disponibles que no estén asociados
+    response = supabase.table('termino-negocio').select('*').not_.in_('Id', associated_term_ids).not_.eq('Id', parent_term_id).execute()
+    available_terms = response.data
+
+    if not available_terms:
+        st.write("No hay términos disponibles para asociar.")
+        return
+
+    # Ordenar los términos disponibles por 'nombre-termino' en orden ascendente
+    available_terms.sort(key=lambda x: x['nombre-termino'])
+
+    # Agregar un filtro de búsqueda
+    search_term = st.text_input("Buscar por nombre del término:")
+    filtered_terms = [term for term in available_terms if search_term.lower() in term['nombre-termino'].lower()]
+
+    # Crear dos columnas para mostrar los expanders
+    col1, col2 = st.columns(2)
+
+    # Dividir los términos filtrados en dos listas
+    mid = len(filtered_terms) // 2
+    left_column_terms = filtered_terms[:mid]
+    right_column_terms = filtered_terms[mid:]
+
+    # Mostrar términos disponibles en tarjetas
+    for left_term, right_term in zip_longest(left_column_terms, right_column_terms):
+        with col1:
+            if left_term:
+                with st.expander(f"{left_term['nombre-termino']}"):
+                    st.write(f"Concepto: {left_term['concepto']}")
+                    if st.button("Asociar", key=f"associate_term_{left_term['Id']}"):
+                        associate_term(parent_term_id, left_term['Id'])
+                        st.success(f"Término '{left_term['nombre-termino']}' asociado exitosamente.")
+                        st.rerun()
+        
+        with col2:
+            if right_term:
+                with st.expander(f"{right_term['nombre-termino']}"):
+                    st.write(f"Concepto: {right_term['concepto']}")
+                    if st.button("Asociar", key=f"associate_term_{right_term['Id']}"):
+                        associate_term(parent_term_id, right_term['Id'])
+                        st.success(f"Término '{right_term['nombre-termino']}' asociado exitosamente.")
+                        st.rerun()
+
+    if not filtered_terms:
+        st.write("No se encontraron términos que coincidan con la búsqueda.")
+
+def normalize_string(s):
+    # Remove accents and convert to lowercase
+    return unidecode.unidecode(s).lower()
+
+def is_valid_name(name):
+     #Allow letters (including accented ones), numbers, and spaces
+    return bool(re.match(r'^[a-zA-ZáéíóúüñÁÉÍÓÚÜÑ0-9\s]+$', name))

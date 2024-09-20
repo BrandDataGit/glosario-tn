@@ -64,7 +64,7 @@ def ai_review(term_id, pdf_content):
     Master Data Steward: {term_details['master-data-steward']}
     
     Información del Término de Negocio:
-    Nombre: {term_details['nombre-termino']}
+    Nombre: {term_details['nombre-termino']} (si no incluye conjunciones, cumple)
     Concepto: {term_details['concepto']}
     
 
@@ -95,7 +95,7 @@ def ai_review(term_id, pdf_content):
 
     Para cada punto, cita el/los lineamientos específicos y explica cómo se cumple o no se cumple.
     """
-    print(pdf_content)
+    #print(pdf_content)
     resultado = chat_con_gpt(prompt)
 
     # Guardar el resultado y la fecha en Supabase
