@@ -4,7 +4,8 @@ from aifeatures import extract_pdf_content, ai_review, ai_attribute_review
 from utils import (display_status_indicator, get_associated_data, 
 associate_existing_data, add_new_data, display_asociable_attributes, 
 get_related_terms, display_breadcrumbs,add_new_child_term, get_child_terms,
-associate_existing_term, display_associable_terms, normalize_string, is_valid_name)
+associate_existing_term, display_associable_terms, normalize_string, is_valid_name, 
+get_capacidad_nombre,get_capacidades,get_capacidad_id)
 from supabase_config import supabase
 from itertools import zip_longest
 import os
@@ -79,7 +80,7 @@ def display_term_expander(row):
             f"""
             <div style='display: flex;'>
                 <div style='width: 150px;'>Capacidad:</div>
-                <div style='margin-left: 40px;'><strong>{row['capacidad']}</strong></div>
+                <div style='margin-left: 40px;'><strong>{get_capacidad_nombre(row['capacidad_id'])}</strong></div>
             </div>
             """, 
             unsafe_allow_html=True
@@ -148,7 +149,7 @@ def display_term_detail(term_id):
             col1, col2 = st.columns(2)
             
             with col1:
-                st.text_input("Capacidad", value=term_details['capacidad'], disabled=True)
+                st.text_input("Capacidad", value=get_capacidad_nombre(term_details['capacidad_id']), disabled=True)
                 st.text_input("Sujeto", value=term_details['sujeto'], disabled=True)
             
             with col2:
@@ -264,6 +265,7 @@ def edit_term_detail(term_id):
         # Obtener los detalles del término
         response = supabase.table('termino-negocio').select('*').eq('Id', term_id).execute()
         term_details = response.data[0] if response.data else None
+
         if term_details:
             st.header(f"Editar: 📚{term_details['nombre-termino']}")
 
@@ -275,7 +277,9 @@ def edit_term_detail(term_id):
                 col1, col2 = st.columns(2)
                 
                 with col1:
-                    new_capacity = st.text_input("Capacidad", value=term_details['capacidad'])
+                    capacidades = get_capacidades()
+                    current_capacidad = get_capacidad_nombre(term_details['capacidad_id'])
+                    new_capacity = st.selectbox("Capacidad", capacidades, index=capacidades.index(current_capacidad) if current_capacidad in capacidades else 0)
                     new_subject = st.text_input("Sujeto", value=term_details['sujeto'])
                 
                 with col2:
@@ -283,7 +287,7 @@ def edit_term_detail(term_id):
                     new_data_steward = st.text_input("Master Data Steward", value=term_details['master-data-steward'])
 
                 # Botones de acción
-                col_space,col_cancel, col_save = st.columns([7,1,1])
+                col_space, col_cancel, col_save = st.columns([7,1,1])
                 with col_space:
                     st.write("")
                 with col_cancel:
@@ -292,25 +296,31 @@ def edit_term_detail(term_id):
                         st.rerun()
                 with col_save:
                     if st.form_submit_button("💾 Guardar"):
-                        # Actualizar los datos en Supabase
-                        updated_data = {
-                            'concepto': new_concept,
-                            'capacidad': new_capacity,
-                            'sujeto': new_subject,
-                            'proceso-valor': new_value_process,
-                            'master-data-steward': new_data_steward
-                        }
-                        
-                        supabase.table('termino-negocio').update(updated_data).eq('Id', term_id).execute()
-                        
-                        st.success("Cambios guardados exitosamente.")
-                        st.session_state.page = 'term_detail'
-                        st.rerun()
+                        try:
+                            # Actualizar los datos en Supabase
+                            updated_data = {
+                                'concepto': new_concept,
+                                'capacidad_id': get_capacidad_id(new_capacity),
+                                'sujeto': new_subject,
+                                'proceso-valor': new_value_process,
+                                'master-data-steward': new_data_steward
+                            }
+                            
+                            response = supabase.table('termino-negocio').update(updated_data).eq('Id', term_id).execute()
+                            
+                            if response.data:
+                                st.success("Cambios guardados exitosamente.")
+                                st.session_state.page = 'term_detail'
+                                st.rerun()
+                            else:
+                                st.error("No se pudo guardar los cambios. Por favor, intenta de nuevo.")
+                        except Exception as e:
+                            st.error(f"Error al guardar los cambios: {str(e)}")
 
         else:
-            st.write("No se encontraron detalles para este término.")
+            st.error("No se encontraron detalles para este término.")
     except Exception as e:
-        st.error(f"Error al editar los detalles del término: {str(e)}")
+        st.error(f"Error al cargar los detalles del término: {str(e)}")
 
 
 def display_associate_data_page(term_id):
@@ -648,7 +658,8 @@ def add_new_term():
         col1, col2 = st.columns(2)
         
         with col1:
-            new_capacidad = st.text_input("Capacidad")
+            capacidades = get_capacidades()
+            new_capacidad = st.selectbox("Capacidad", capacidades)
             new_sujeto = st.text_input("Sujeto")
         
         with col2:
@@ -688,10 +699,16 @@ def add_new_term():
                     elif new_nombre_normalized in existing_data_names:
                         st.error(f"El nombre '{new_nombre}' ya existe como un dato de negocio. Por favor, elige un nombre diferente.")
                     else:
+                        # Obtener el ID de la capacidad seleccionada
+                        capacidad_id = get_capacidad_id(new_capacidad)
+                        if capacidad_id is None:
+                            st.error(f"No se pudo obtener el ID para la capacidad '{new_capacidad}'. Por favor, verifica la selección.")
+                            return
+
                         new_term_data = {
                             'nombre-termino': new_nombre,
                             'concepto': new_concepto,
-                            'capacidad': new_capacidad,
+                            'capacidad_id': capacidad_id,  # Usar capacidad_id en lugar de capacidad
                             'sujeto': new_sujeto,
                             'proceso-valor': new_proceso_valor,
                             'master-data-steward': new_data_steward,
@@ -705,9 +722,11 @@ def add_new_term():
                             st.session_state.page = 'term_explore'
                             st.rerun()
                         else:
-                            st.error("Error al agregar el nuevo término de negocio.")
+                            st.error("Error al agregar el nuevo término de negocio. Por favor, verifica los datos e intenta nuevamente.")
                 except Exception as e:
                     st.error(f"Error al procesar la solicitud: {str(e)}")
+                    st.error("Detalles del error para depuración:")
+                    st.error(e)
                 
 
 def display_associate_existing_term(parent_term_id):
@@ -733,7 +752,8 @@ def display_add_new_child_term(parent_term_id):
         col1, col2 = st.columns(2)
         
         with col1:
-            new_capacidad = st.text_input("Capacidad")
+            capacidades = get_capacidades()
+            new_capacidad = st.selectbox("Capacidad", capacidades)
             new_sujeto = st.text_input("Sujeto")
         
         with col2:
@@ -776,7 +796,7 @@ def display_add_new_child_term(parent_term_id):
                         new_term_data = {
                             'nombre-termino': new_nombre,
                             'concepto': new_concepto,
-                            'capacidad': new_capacidad,
+                            'capacidad_id': get_capacidad_id(new_capacidad),
                             'sujeto': new_sujeto,
                             'proceso-valor': new_proceso_valor,
                             'master-data-steward': new_data_steward,
@@ -792,8 +812,7 @@ def display_add_new_child_term(parent_term_id):
                             relation_response = supabase.table('termino-termino').insert({
                                 'termino-padre-id': parent_term_id,
                                 'termino-hijo-id': new_term_id,
-                                'estatus': 'captura',
-                                'created_at': 'now()'                               
+                                'estatus': 'captura'
                             }).execute()
 
                             if relation_response.data:

@@ -1,7 +1,7 @@
 import streamlit as st
 from supabase_config import sign_up, sign_in, sign_out, get_user, check_user_exists, insert_user_profile
 import pandas as pd
-from utils import load_termino_negocio_data
+from utils import load_termino_negocio_data, get_capacidades, get_capacidad_id
 from pages import (display_terms, display_term_detail, edit_term_detail, 
                    display_associate_data_page, display_attribute_detail, 
                    edit_attribute_detail, display_add_new_attribute, 
@@ -97,8 +97,9 @@ def main():
         # Filtros
         st.sidebar.header("Filtros")
         
+        
         # Crear filtros dinámicamente
-        filter_columns = ['master-data-steward', 'proceso-valor', 'origen', 'estatus', 'sujeto', 'capacidad']
+        filter_columns = ['master-data-steward', 'proceso-valor', 'origen', 'estatus', 'sujeto']
         filters = {}
         
         for column in filter_columns:
@@ -108,10 +109,19 @@ def main():
             else:
                 st.warning(f"Columna '{column}' no encontrada en el DataFrame")
 
+         # Filtro especial para capacidad
+        capacidades = get_capacidades()
+        selected_capacidad = st.sidebar.selectbox("Filtrar por capacidad", ['Todos'] + capacidades)
+        filters['capacidad'] = selected_capacidad
+
         # Aplicar filtros
         for column, value in filters.items():
             if value != 'Todos':
-                tn_df = tn_df[tn_df[column] == value]
+                if column == 'capacidad':
+                    capacidad_id = get_capacidad_id(value)
+                    tn_df = tn_df[tn_df['capacidad_id'] == capacidad_id]
+                else:
+                    tn_df = tn_df[tn_df[column] == value]
         
         if choice == "Explorar Términos":
             if st.session_state.page == 'term_explore':

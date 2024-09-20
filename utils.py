@@ -261,3 +261,32 @@ def normalize_string(s):
 def is_valid_name(name):
      #Allow letters (including accented ones), numbers, and spaces
     return bool(re.match(r'^[a-zA-ZáéíóúüñÁÉÍÓÚÜÑ0-9\s]+$', name))
+
+def get_capacidades():
+    try:
+        response = supabase.table('capacidad').select('*').execute()
+        return [cap['capacidad'] for cap in response.data]
+    except Exception as e:
+        st.error(f"Error al cargar capacidades: {str(e)}")
+        return []
+
+def get_capacidad_id(nombre_capacidad):
+    try:
+        response = supabase.table('capacidad').select('id').eq('capacidad', nombre_capacidad).execute()
+        return response.data[0]['id'] if response.data else None
+    except Exception as e:
+        st.error(f"Error al obtener id de capacidad: {str(e)}")
+        return None
+
+def get_capacidad_nombre(capacidad_id):
+    try:
+        # Convertir capacidad_id a entero, eliminando cualquier parte decimal
+        capacidad_id = int(float(capacidad_id))
+        response = supabase.table('capacidad').select('capacidad').eq('id', capacidad_id).execute()
+        return response.data[0]['capacidad'] if response.data else None
+    except ValueError:
+        st.error(f"Error: capacidad_id inválido ({capacidad_id})")
+        return None
+    except Exception as e:
+        st.error(f"Error al obtener nombre de capacidad: {str(e)}")
+        return None
