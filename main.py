@@ -10,6 +10,27 @@ from pages import (display_terms, display_term_detail, edit_term_detail,
 
 st.set_page_config(page_title="Glosario de Términos de Negocio", layout="wide")
 
+# Agregar estilos CSS personalizados
+st.markdown("""
+<style>
+    body {
+        font-size: 0.9rem !important;
+    }
+    .stButton button {
+        font-size: 0.9rem !important;
+    }
+    .stSelectbox div[data-baseweb="select"] > div {
+        font-size: 0.9rem !important;
+    }
+    .stTextInput input, .stTextArea textarea {
+        font-size: 0.9rem !important;
+    }
+    .stMarkdown p, .stMarkdown li {
+        font-size: 0.9rem !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 def login():
     st.title("Iniciar Sesión")
     email = st.text_input("Email", key="login_email")
