@@ -34,9 +34,15 @@ def check_user_exists(email: str):
     response = supabase.from_('user_profile').select('email').eq('email', email).execute()
     return len(response.data) > 0
 
+def is_valid_email_domain(email: str):
+    valid_domains = ['@tec.mx', '@itesm.mx']
+    return any(email.lower().endswith(domain) for domain in valid_domains)
+
 def sign_up(email: str, password: str):
     if check_user_exists(email):
         return {"error": "El usuario ya existe"}
+    if not is_valid_email_domain(email):
+        return {"error": "Solo se permiten correos electrónicos con dominios @tec.mx o @itesm.mx"}
     return supabase.auth.sign_up({"email": email, "password": password})
 
 def sign_in(email: str, password: str):
