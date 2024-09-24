@@ -53,7 +53,7 @@ def eliminar_termino_negocio(term_id):
             st.session_state.delete_confirmation = False
             st.rerun()
 
-@st.dialog("No se puede borrar el dato de negocio")
+@st.dialog("No se puede borrar el termino de negocio")
 def warning_2(term_id):
     item_name = get_term_nombre(term_id)
     st.write(f"{item_name} tiene asociados múltiples términos y/o datos de negocio y no puede ser eliminado.")
