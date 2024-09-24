@@ -2,12 +2,13 @@ import streamlit as st
 import pandas as pd
 import time
 from aifeatures import extract_pdf_content, ai_review, ai_attribute_review
-from modals import eliminar_dato_negocio
+from modals import eliminar_dato_negocio, warning_1, warning_2, eliminar_termino_negocio
 from utils import (display_status_indicator, get_associated_data, 
 associate_existing_data, add_new_data, display_asociable_attributes, 
 get_related_terms, display_breadcrumbs,add_new_child_term, get_child_terms,
 associate_existing_term, display_associable_terms, normalize_string, is_valid_name, 
-get_capacidad_nombre,get_capacidades,get_capacidad_id, desasociar_termino, desasociar_dato, check_data_associations)
+get_capacidad_nombre,get_capacidades,get_capacidad_id, desasociar_termino, desasociar_dato, 
+check_data_associations, check_term_associations)
 from supabase_config import supabase
 from itertools import zip_longest
 import os
@@ -115,9 +116,9 @@ def display_term_detail(term_id):
         # Obtener los detalles del término
         response = supabase.table('termino-negocio').select('*').eq('Id', term_id).execute()
         term_details = response.data[0] if response.data else None
-
+        term_associations, data_associations = check_term_associations(term_id)
         if term_details:
-            colc, cold, colf, colg, colh = st.columns([8.5,1.2,1.2,1.2,1.2])
+            colc, cold, colf, colg, colh, coli = st.columns([7.3,1.2,1.2,1.2,1.2,1.2])
             with colc:
                 display_breadcrumbs('term_detail', term_name=term_details['nombre-termino'])
             with cold:
@@ -141,6 +142,14 @@ def display_term_detail(term_id):
                         ai_feedback = ai_review(term_id, pdf_content)
                     st.success("Análisis de IA completado y guardado.")
                     st.rerun()
+            with coli:
+                if term_associations > 0 or data_associations > 0:
+                    if st.button("🔒 No se puede borrar"):
+                        warning_2(term_id)          
+                else:
+                    if st.button("🗑️ Borrar"):
+                        eliminar_termino_negocio(term_id)
+
 
             st.header(f"📚 {term_details['nombre-termino']}")
             
@@ -420,9 +429,8 @@ def display_attribute_detail(data_id):
             with coli:
                 if has_multiple_associations:
                     if st.button("🔒 No se puede borrar"):
-                        st.info(f"Este dato está asociado a {associations} términos de negocio y no puede ser eliminado.")
-                        time.sleep(2.5)
-                        st.rerun()
+                        warning_1(data_id)
+                        
                 else:
                     if st.button("🗑️ Borrar"):
                         eliminar_dato_negocio(data_id)

@@ -364,3 +364,56 @@ def get_dato_nombre(dato_id):
     except Exception as e:
         st.error(f"Error al obtener nombre del dato de negocio: {str(e)}")
         return None
+    
+def check_term_associations(term_id):
+    try:
+        # Verificar asociaciones en termino-termino
+        term_term_response = supabase.table('termino-termino').select('*').or_(f'termino-padre-id.eq.{term_id},termino-hijo-id.eq.{term_id}').execute()
+        term_associations = len(term_term_response.data)
+
+        # Verificar asociaciones en termino-dato
+        term_data_response = supabase.table('termino-dato').select('*').eq('termino-id', term_id).execute()
+        data_associations = len(term_data_response.data)
+
+        return term_associations, data_associations
+    except Exception as e:
+        print(f"Error al verificar asociaciones del término: {str(e)}")
+        return -1, -1  # Retornamos -1 en caso de error para indicar que hubo un problema
+    
+def delete_term_and_relations(term_id):
+    try:
+        term_associations, data_associations = check_term_associations(term_id)
+        
+        if term_associations > 0 or data_associations > 0:
+            message = "No se puede eliminar el término porque tiene "
+            if term_associations > 0:
+                message += f"{term_associations} término(s) asociado(s)"
+            if data_associations > 0:
+                message += " y " if term_associations > 0 else ""
+                message += f"{data_associations} dato(s) de negocio asociado(s)"
+            message += "."
+            return False, message
+        
+        # Si no hay asociaciones, procedemos con la eliminación
+        response = supabase.table('termino-negocio').delete().eq('Id', term_id).execute()
+        
+        if response.data:
+            return True, "Término de negocio eliminado exitosamente."
+        else:
+            return False, "Error al eliminar el término de negocio."
+    except Exception as e:
+        error_message = f"Error al eliminar el término: {str(e)}"
+        print(error_message)
+        return False, error_message
+    
+def get_term_nombre(term_id):
+    try:
+        term_id = int(float(term_id))
+        response = supabase.table('termino-negocio').select('nombre-termino').eq('Id', term_id).execute()
+        return response.data[0]['nombre-termino'] if response.data else None
+    except ValueError:
+        st.error(f"Error: term_id inválido ({term_id})")
+        return None
+    except Exception as e:
+        st.error(f"Error al obtener nombre del término de negocio: {str(e)}")
+        return None
