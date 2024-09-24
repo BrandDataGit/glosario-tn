@@ -1,0 +1,59 @@
+# Archivos de secretos y configuración
+.env
+.streamlit/secrets.toml
+
+# Archivos y directorios de Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribución / empaquetado
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Entornos virtuales
+venv/
+env/
+ENV/
+
+# IDEs y editores
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Sistemas operativos
+.DS_Store
+Thumbs.db
+
+# Archivos de log
+*.log
+
+# Archivos de base de datos
+*.db
+*.sqlite3
+
+# Directorios de Streamlit
+.streamlit/
+
+# Archivos temporales
+*.tmp
+*.bak
+*.swp
