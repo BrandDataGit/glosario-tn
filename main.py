@@ -71,7 +71,7 @@ def signup():
                 # El registro fue exitoso, ahora insertamos el email en user-profile
                 insert_result = insert_user_profile(email)
                 if insert_result:
-                    st.success("Registro exitoso! Por favor, confirma tu correo electrónico.")
+                    st.success("Registro exitoso! Por favor, inicia sesión.")
                 else:
                     st.warning("Registro exitoso, pero hubo un problema al crear el perfil de usuario. Por favor, contacta al soporte.")
             else:
