@@ -1,13 +1,27 @@
 import os
+import streamlit as st
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
 # Attempt to load environment variables from .env file
 load_dotenv()
 
+# Function to get environment variable or secret
+def get_env_or_secret(key: str) -> str:
+    return st.secrets.get(key)    
+    #return os.environ.get(key) or st.secrets.get(key)
+
+# Get Supabase URL and Key
+url: str = get_env_or_secret("SUPABASE_URL")
+key: str = get_env_or_secret("SUPABASE_KEY")
+
+# Check if the URL and key are available
+if not url or not key:
+    raise ValueError("Supabase URL and Key must be set in environment variables, .env file, or Streamlit secrets")
+
 # Get Supabase URL and Key from environment variables
-url: str = os.environ.get("SUPABASE_URL")
-key: str = os.environ.get("SUPABASE_KEY")
+#url: str = os.environ.get("SUPABASE_URL")
+#key: str = os.environ.get("SUPABASE_KEY")
 
 # Check if the URL and key are available
 if not url or not key:
