@@ -1,9 +1,11 @@
 import PyPDF2
+import streamlit as st
 import os
 from openai import OpenAI
 from supabase_config import supabase
 from utils import get_associated_data, get_related_terms
 from datetime import datetime
+from supabase_config import get_env_or_secret
 
 def extract_pdf_content(pdf_path):
     content = ""
@@ -24,10 +26,13 @@ def extract_pdf_content(pdf_path):
         print(f"Error inesperado al procesar '{pdf_path}': {str(e)}")
     
     return content
+   
 
 def ai_review(term_id, pdf_content):
+
+    ai_api_key: str = get_env_or_secret("OPENAI_API_KEY")
     # Configura tu API key de OpenAI
-    client = OpenAI(api_key='sk-qN7JYVj6-dkSFR9Qv2d4Sr9YqkUAQOyvzlo5Y_tiUhT3BlbkFJ9f_WcQTtRoou1blxdznIRHe6pQ5ZEaskpDEuWn4g0A')
+    client = OpenAI(api_key=ai_api_key)
 
     # Obtén los detalles del término
     term_response = supabase.table('termino-negocio').select('*').eq('Id', term_id).execute()
