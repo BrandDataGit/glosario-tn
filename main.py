@@ -1,7 +1,7 @@
 import streamlit as st
 from supabase_config import sign_up, sign_in, sign_out, get_user, check_user_exists, insert_user_profile
 import pandas as pd
-from utils import load_termino_negocio_data, get_capacidades, get_capacidad_id
+from utils import load_termino_negocio_data, get_capacidades, get_capacidad_id, delete_term_and_relations
 from pages import (display_terms, display_term_detail, edit_term_detail, 
                    display_associate_data_page, display_attribute_detail, 
                    edit_attribute_detail, display_add_new_attribute, 
@@ -71,6 +71,18 @@ def main():
         if st.sidebar.button("Cerrar Sesión"):
             sign_out()
             st.session_state.pop("user", None)
+            st.rerun()
+
+        if st.session_state.get('term_deleted'):
+            # Eliminar el término de la base de datos
+            delete_term_and_relations(st.session_state.term_to_delete)
+            # Limpiar las variables de sesión
+            st.session_state.term_deleted = False
+            st.session_state.term_to_delete = None
+            st.session_state.selected_term = None
+            st.session_state.selected_attribute = None
+            st.session_state.parent_term_id = None
+            # Forzar una recarga completa
             st.rerun()
 
         # Inicializar variables de sesión si no existen

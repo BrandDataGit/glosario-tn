@@ -44,6 +44,10 @@ def eliminar_termino_negocio(term_id):
                 success, message = delete_term_and_relations(term_id)
                 if success:
                     st.success(message)
+                    # Marcar el término como eliminado en la sesión
+                    st.session_state.term_deleted = True
+                    st.session_state.term_to_delete = term_id
+                    # Redirigir a la página principal
                     st.session_state.page = 'term_explore'
                     st.rerun()
                 else:
