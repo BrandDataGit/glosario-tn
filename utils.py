@@ -290,3 +290,41 @@ def get_capacidad_nombre(capacidad_id):
     except Exception as e:
         st.error(f"Error al obtener nombre de capacidad: {str(e)}")
         return None
+
+def desasociar_termino(parent_term_id, child_term_id):
+    try:
+        response = supabase.table('termino-termino').delete().eq('termino-padre-id', parent_term_id).eq('termino-hijo-id', child_term_id).execute()
+        if response.data:
+            return True
+        else:
+            return False
+    except Exception as e:
+        st.error(f"Error al desasociar el término: {str(e)}")
+        return False
+    
+def desasociar_dato(term_id, data_id):
+    try:
+        response = supabase.table('termino-dato').delete().eq('termino-id', term_id).eq('dato-id', data_id).execute()
+        if response.data:
+            return True
+        else:
+            return False
+    except Exception as e:
+        st.error(f"Error al desasociar el dato: {str(e)}")
+        return False
+
+def delete_data_and_relations(data_id):
+    try:
+        # Primero, eliminamos todas las relaciones en la tabla termino-dato
+        supabase.table('termino-dato').delete().eq('dato-id', data_id).execute()
+        
+        # Luego, eliminamos el dato de negocio
+        response = supabase.table('dato-negocio').delete().eq('id', data_id).execute()
+        
+        if response.data:
+            return True
+        else:
+            return False
+    except Exception as e:
+        st.error(f"Error al eliminar el dato y sus relaciones: {str(e)}")
+        return False

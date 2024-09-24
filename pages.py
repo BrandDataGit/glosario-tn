@@ -5,7 +5,8 @@ from utils import (display_status_indicator, get_associated_data,
 associate_existing_data, add_new_data, display_asociable_attributes, 
 get_related_terms, display_breadcrumbs,add_new_child_term, get_child_terms,
 associate_existing_term, display_associable_terms, normalize_string, is_valid_name, 
-get_capacidad_nombre,get_capacidades,get_capacidad_id)
+get_capacidad_nombre,get_capacidades,get_capacidad_id, desasociar_termino, desasociar_dato,
+delete_data_and_relations)
 from supabase_config import supabase
 from itertools import zip_longest
 import os
@@ -164,7 +165,7 @@ def display_term_detail(term_id):
                 formatted_date = ai_review_date.strftime("%d/%m/%Y")
                 st.write(f"AI feedback solicitado el: {formatted_date}")
 
-             # Nueva sección: Términos de Negocio Hijo Asociados
+            # Nueva sección: Términos de Negocio Hijo Asociados
             st.subheader("Términos de Negocio Hijo Asociados")
             col_header, col_associate, col_add = st.columns([8,1.5,1.5])
             with col_associate:
@@ -190,19 +191,37 @@ def display_term_detail(term_id):
                     for term in left_column_terms:
                         with st.expander(f"{display_status_indicator(term['estatus'])}📚{term['nombre-termino']}"):
                             st.write(f"Concepto: {term['concepto']}")
-                            if st.button("🔎 Detalle", key=f"view_child_term_{term['Id']}"):
-                                st.session_state.selected_term = term['Id']
-                                st.session_state.page = 'term_detail'
-                                st.rerun()
+                            col_view, col_disassociate = st.columns(2)
+                            with col_view:
+                                if st.button("🔎 Detalle", key=f"view_child_term_{term['Id']}"):
+                                    st.session_state.selected_term = term['Id']
+                                    st.session_state.page = 'term_detail'
+                                    st.rerun()
+                            with col_disassociate:
+                                if st.button("❌ Desasociar", key=f"disassociate_child_term_{term['Id']}"):
+                                    if desasociar_termino(term_id, term['Id']):
+                                        st.success(f"Término '{term['nombre-termino']}' desasociado exitosamente.")
+                                        st.rerun()
+                                    else:
+                                        st.error("Error al desasociar el término.")
                 
                 with col2:
                     for term in right_column_terms:
                         with st.expander(f"{display_status_indicator(term['estatus'])}📚{term['nombre-termino']}"):
                             st.write(f"Concepto: {term['concepto']}")
-                            if st.button("🔎 Detalle", key=f"view_child_term_{term['Id']}"):
-                                st.session_state.selected_term = term['Id']
-                                st.session_state.page = 'term_detail'
-                                st.rerun()
+                            col_view, col_disassociate = st.columns(2)
+                            with col_view:
+                                if st.button("🔎 Detalle", key=f"view_child_term_{term['Id']}"):
+                                    st.session_state.selected_term = term['Id']
+                                    st.session_state.page = 'term_detail'
+                                    st.rerun()
+                            with col_disassociate:
+                                if st.button("❌ Desasociar", key=f"disassociate_child_term_{term['Id']}"):
+                                    if desasociar_termino(term_id, term['Id']):
+                                        st.success(f"Término '{term['nombre-termino']}' desasociado exitosamente.")
+                                        st.rerun()
+                                    else:
+                                        st.error("Error al desasociar el término.")
             else:
                 st.write("No hay términos de Negocio hijo asociados.")
 
@@ -233,24 +252,42 @@ def display_term_detail(term_id):
                 # Iterar sobre los datos asociados y mostrarlos en las columnas
                 for left_data, right_data in zip_longest(left_column_data, right_column_data):
                     with col1:
-                        if right_data:
-                            with st.expander(f"{display_status_indicator(right_data['estatus'])}📑**{right_data['dato']}**"):
-                                st.write(f"Definición: {right_data['definicion']}")
-                                st.write(f"Tipo de dato: {right_data['tipo_dato']}")
-                                if st.button("🔎 Detalle", key=f"detail_{right_data['id']}"):
-                                    st.session_state.selected_data = right_data['id']
-                                    st.session_state.page = 'data_detail'
-                                    st.rerun()
-                    
-                    with col2:
                         if left_data:
                             with st.expander(f"{display_status_indicator(left_data['estatus'])}📑**{left_data['dato']}**"):
                                 st.write(f"Definición: {left_data['definicion']}")
                                 st.write(f"Tipo de dato: {left_data['tipo_dato']}")
-                                if st.button("🔎 Detalle", key=f"detail_{left_data['id']}"):
-                                    st.session_state.selected_data = left_data['id']
-                                    st.session_state.page = 'data_detail'
-                                    st.rerun()
+                                col_view, col_disassociate = st.columns(2)
+                                with col_view:
+                                    if st.button("🔎 Detalle", key=f"detail_{left_data['id']}"):
+                                        st.session_state.selected_data = left_data['id']
+                                        st.session_state.page = 'data_detail'
+                                        st.rerun()
+                                with col_disassociate:
+                                    if st.button("❌ Desasociar", key=f"disassociate_data_{left_data['id']}"):
+                                        if desasociar_dato(term_id, left_data['id']):
+                                            st.success(f"Dato '{left_data['dato']}' desasociado exitosamente.")
+                                            st.rerun()
+                                        else:
+                                            st.error("Error al desasociar el dato.")
+                    
+                    with col2:
+                        if right_data:
+                            with st.expander(f"{display_status_indicator(right_data['estatus'])}📑**{right_data['dato']}**"):
+                                st.write(f"Definición: {right_data['definicion']}")
+                                st.write(f"Tipo de dato: {right_data['tipo_dato']}")
+                                col_view, col_disassociate = st.columns(2)
+                                with col_view:
+                                    if st.button("🔎 Detalle", key=f"detail_{right_data['id']}"):
+                                        st.session_state.selected_data = right_data['id']
+                                        st.session_state.page = 'data_detail'
+                                        st.rerun()
+                                with col_disassociate:
+                                    if st.button("❌ Desasociar", key=f"disassociate_data_{right_data['id']}"):
+                                        if desasociar_dato(term_id, right_data['id']):
+                                            st.success(f"Dato '{right_data['dato']}' desasociado exitosamente.")
+                                            st.rerun()
+                                        else:
+                                            st.error("Error al desasociar el dato.")
                         
             else:
                 st.write("No hay datos de negocio asociados.")
@@ -350,7 +387,7 @@ def display_attribute_detail(data_id):
                 else:
                     term_name = "Término no asociado"
 
-            colc, cold, colf, colg, colh = st.columns([8,1.6,1.2,1.2,1.2])
+            colc, cold, colf, colg, colh, coli = st.columns([7,1.6,1.2,1.2,1.2,1.2])
             with colc:
                 display_breadcrumbs('data_detail', term_name=term_name, data_name=data_details['dato'])
             with cold:
@@ -376,6 +413,29 @@ def display_attribute_detail(data_id):
                         ai_feedback = ai_attribute_review(data_id, pdf_content)
                     st.success("Análisis de IA completado y guardado.")
                     st.rerun()
+            with coli:
+                if 'delete_confirmation' not in st.session_state:
+                    st.session_state.delete_confirmation = False
+
+                if st.button("🗑️ Borrar"):
+                    st.session_state.delete_confirmation = True
+                    st.rerun()
+
+                if st.session_state.delete_confirmation:
+                    st.warning("¿Está seguro de que desea eliminar este dato? Esta acción eliminará el dato y todas sus asociaciones con términos de negocio.")
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        if st.button("Sí, eliminar"):
+                            if delete_data_and_relations(data_id):
+                                st.success("Dato de negocio eliminado exitosamente.")
+                                st.session_state.page = 'term_detail'
+                                st.rerun()
+                            else:
+                                st.error("Error al eliminar el dato de negocio.")
+                    with col2:
+                        if st.button("No, cancelar"):
+                            st.session_state.delete_confirmation = False
+                            st.rerun()
             
             st.header(f"📑 {data_details['dato']}")
 

@@ -1,6 +1,7 @@
 # Archivos de secretos y configuración
-.env
 .streamlit/secrets.toml
+
+.env
 
 # Archivos y directorios de Python
 __pycache__/
