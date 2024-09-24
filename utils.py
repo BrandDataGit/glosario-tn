@@ -313,18 +313,54 @@ def desasociar_dato(term_id, data_id):
         st.error(f"Error al desasociar el dato: {str(e)}")
         return False
 
+def check_data_associations(data_id):
+    try:
+        response = supabase.table('termino-dato').select('*').eq('dato-id', data_id).execute()
+        associations = len(response.data)
+        print(f"Verificando asociaciones para dato_id {data_id}: {associations} asociaciones encontradas")
+        return associations, associations > 1
+    except Exception as e:
+        print(f"Error al verificar asociaciones del dato: {str(e)}")
+        return 0, True  # En caso de error, asumimos que hay múltiples asociaciones para prevenir borrados accidentales
+
 def delete_data_and_relations(data_id):
     try:
-        # Primero, eliminamos todas las relaciones en la tabla termino-dato
+        # Verificar si el dato tiene más de una asociación
+        associations, has_multiple_associations = check_data_associations(data_id)
+        
+        if has_multiple_associations:
+            print(f"No se puede eliminar el dato {data_id} porque tiene múltiples asociaciones ({associations}).")
+            return False, f"No se puede eliminar el dato porque está asociado a {associations} términos de negocio."
+        
+        # Si hay 0 o 1 asociación, procedemos con la eliminación
+        print(f"Procediendo a eliminar el dato {data_id} y sus relaciones")
+        
+        # Primero, eliminamos las relaciones (si existen)
         supabase.table('termino-dato').delete().eq('dato-id', data_id).execute()
         
         # Luego, eliminamos el dato de negocio
         response = supabase.table('dato-negocio').delete().eq('id', data_id).execute()
         
         if response.data:
-            return True
+            print(f"Dato {data_id} y sus relaciones eliminados exitosamente")
+            return True, "Dato de negocio y sus relaciones eliminados exitosamente."
         else:
-            return False
+            print(f"Error al eliminar el dato {data_id}")
+            return False, "Error al eliminar el dato de negocio."
     except Exception as e:
-        st.error(f"Error al eliminar el dato y sus relaciones: {str(e)}")
-        return False
+        error_message = f"Error al eliminar el dato: {str(e)}"
+        print(error_message)
+        return False, error_message
+
+def get_dato_nombre(dato_id):
+    try:
+        # Convertir dato_id a entero, eliminando cualquier parte decimal
+        dato_id = int(float(dato_id))
+        response = supabase.table('dato-negocio').select('dato').eq('id', dato_id).execute()
+        return response.data[0]['dato'] if response.data else None
+    except ValueError:
+        st.error(f"Error: dato_id inválido ({dato_id})")
+        return None
+    except Exception as e:
+        st.error(f"Error al obtener nombre del dato de negocio: {str(e)}")
+        return None

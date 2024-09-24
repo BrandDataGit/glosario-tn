@@ -1,12 +1,13 @@
 import streamlit as st
 import pandas as pd
+import time
 from aifeatures import extract_pdf_content, ai_review, ai_attribute_review
+from modals import eliminar_dato_negocio
 from utils import (display_status_indicator, get_associated_data, 
 associate_existing_data, add_new_data, display_asociable_attributes, 
 get_related_terms, display_breadcrumbs,add_new_child_term, get_child_terms,
 associate_existing_term, display_associable_terms, normalize_string, is_valid_name, 
-get_capacidad_nombre,get_capacidades,get_capacidad_id, desasociar_termino, desasociar_dato,
-delete_data_and_relations)
+get_capacidad_nombre,get_capacidades,get_capacidad_id, desasociar_termino, desasociar_dato, check_data_associations)
 from supabase_config import supabase
 from itertools import zip_longest
 import os
@@ -386,6 +387,9 @@ def display_attribute_detail(data_id):
                     term_name = term_details['nombre-termino']
                 else:
                     term_name = "Término no asociado"
+            
+             # Verificar si el dato tiene asociaciones
+            associations, has_multiple_associations = check_data_associations(data_id)
 
             colc, cold, colf, colg, colh, coli = st.columns([7,1.6,1.2,1.2,1.2,1.2])
             with colc:
@@ -414,28 +418,14 @@ def display_attribute_detail(data_id):
                     st.success("Análisis de IA completado y guardado.")
                     st.rerun()
             with coli:
-                if 'delete_confirmation' not in st.session_state:
-                    st.session_state.delete_confirmation = False
-
-                if st.button("🗑️ Borrar"):
-                    st.session_state.delete_confirmation = True
-                    st.rerun()
-
-                if st.session_state.delete_confirmation:
-                    st.warning("¿Está seguro de que desea eliminar este dato? Esta acción eliminará el dato y todas sus asociaciones con términos de negocio.")
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        if st.button("Sí, eliminar"):
-                            if delete_data_and_relations(data_id):
-                                st.success("Dato de negocio eliminado exitosamente.")
-                                st.session_state.page = 'term_detail'
-                                st.rerun()
-                            else:
-                                st.error("Error al eliminar el dato de negocio.")
-                    with col2:
-                        if st.button("No, cancelar"):
-                            st.session_state.delete_confirmation = False
-                            st.rerun()
+                if has_multiple_associations:
+                    if st.button("🔒 No se puede borrar"):
+                        st.info(f"Este dato está asociado a {associations} términos de negocio y no puede ser eliminado.")
+                        time.sleep(2.5)
+                        st.rerun()
+                else:
+                    if st.button("🗑️ Borrar"):
+                        eliminar_dato_negocio(data_id)
             
             st.header(f"📑 {data_details['dato']}")
 
