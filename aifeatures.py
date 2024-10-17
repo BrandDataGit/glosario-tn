@@ -113,7 +113,9 @@ def ai_review(term_id, pdf_content):
     return resultado
 
 def ai_attribute_review(data_id, pdf_content):
-    client = OpenAI(api_key='sk-qN7JYVj6-dkSFR9Qv2d4Sr9YqkUAQOyvzlo5Y_tiUhT3BlbkFJ9f_WcQTtRoou1blxdznIRHe6pQ5ZEaskpDEuWn4g0A')
+    ai_api_key: str = get_env_or_secret("OPENAI_API_KEY")
+    # Configura tu API key de OpenAI
+    client = OpenAI(api_key=ai_api_key)
 
     # Obtén los detalles del dato
     data_response = supabase.table('dato-negocio').select('*').eq('id', data_id).execute()
